@@ -1,4 +1,7 @@
+import { fileURLToPath } from 'node:url'
+
 export default defineNuxtConfig({
+  srcDir: '.',
   dir: {
     pages: 'app/pages'
   },
@@ -20,6 +23,9 @@ export default defineNuxtConfig({
           additionalData: '@use "@shared/assets/scss/_variables.scss" as *;'
         }
       }
+    },
+    optimizeDeps: {
+      include: ['mapbox-gl']
     }
   },
 
@@ -39,11 +45,22 @@ export default defineNuxtConfig({
     { path: '~/src/shared', pathPrefix: false },
   ],
   
-  // Настраиваем алиасы для удобного импорта
   alias: {
-    '@shared': './src/shared',
-    '@entities': './src/entities',
-    '@features': './src/features',
-    '@widgets': './src/widgets',
+    '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
+    '@entities': fileURLToPath(new URL('./src/entities', import.meta.url)),
+    '@features': fileURLToPath(new URL('./src/features', import.meta.url)),
+    '@widgets': fileURLToPath(new URL('./src/widgets', import.meta.url)),
+  },
+
+  imports: {
+    dirs: [
+      'src/shared/api/**'
+    ]
+  },
+
+  runtimeConfig: {
+    public: {
+      mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN
+    }
   }
 })
