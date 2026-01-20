@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import * as mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import mapboxgl from 'mapbox-gl';
+
 
 const mapContainer = ref<HTMLElement | null>(null);
 const map = shallowRef<mapboxgl.Map | null>(null);
@@ -9,22 +9,17 @@ const { token, style } = useMapboxConfig();
 onMounted(() => {
   if (!mapContainer.value) return;
 
-  const mbx = (mapboxgl as any).default || mapboxgl;
-  
-  mbx.accessToken = token;
+  mapboxgl.accessToken = token;
 
-  map.value = new mbx.Map({
+  map.value = new mapboxgl.Map({
     container: mapContainer.value,
     style: style,
     center: [27.5615, 53.9045], // Центр (например, Минск)
     zoom: 12,
-    pitch: 45,
-    accessToken: token
+    pitch: 45
   });
 
-  if (mbx.NavigationControl) {
-    map.value.addControl(new mbx.NavigationControl(), 'top-right');
-  }
+  map.value.addControl(new mapboxgl.NavigationControl(), 'top-right');
 });
 
 

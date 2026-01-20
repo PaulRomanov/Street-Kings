@@ -1,4 +1,4 @@
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath } from 'url';
 
 export default defineNuxtConfig({
   srcDir: '.',
@@ -13,7 +13,8 @@ export default defineNuxtConfig({
   ],
 
   css: [
-    '@shared/assets/scss/main.scss'
+    '@shared/assets/scss/main.scss',
+    fileURLToPath(new URL('./node_modules/mapbox-gl/dist/mapbox-gl.css', import.meta.url))
   ],
 
   vite: {
@@ -25,7 +26,12 @@ export default defineNuxtConfig({
       }
     },
     optimizeDeps: {
-      include: ['mapbox-gl']
+      include: ['mapbox-gl'],
+    },
+    resolve: {
+      alias: {
+        'mapbox-gl': fileURLToPath(new URL('./node_modules/mapbox-gl/dist/esm-min/mapbox-gl.js', import.meta.url))
+      }
     }
   },
 
