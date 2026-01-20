@@ -1,0 +1,16 @@
+@use "reset" as *;
+@use "variables" as *;
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: $color-bg;
+  color: $color-text;
+  font-family: 'Inter', sans-serif; 
+  -webkit-font-smoothing: antialiased;
+}
+
+html, body, #__nuxt {
+  height: 100%;
+  overflow: hidden;
+}
