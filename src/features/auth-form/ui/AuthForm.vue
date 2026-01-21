@@ -79,10 +79,10 @@ const handleAuth = async () => {
   }
 
   &__input {
-    background: rgba(white, 0.05);
-    border: 1px solid rgba(white, 0.1);
+    background: rgba($color-text, 0.05);
+    border: 1px solid rgba($color-text, 0.1);
     padding: 12px;
-    color: white;
+    color: $color-text;
     font-family: monospace;
     outline: none;
 
@@ -105,19 +105,19 @@ const handleAuth = async () => {
   &__toggle {
     background: none;
     border: none;
-    color: rgba(white, 0.5);
+    color: rgba($color-text, 0.5);
     font-size: 12px;
     cursor: pointer;
     width: 100%;
     text-align: center;
 
     &:hover {
-      color: white;
+      color: $color-text;
     }
   }
 
   &__error {
-    color: #ff4444;
+    color: $color-error;
     font-size: 12px;
     margin-bottom: 15px;
   }

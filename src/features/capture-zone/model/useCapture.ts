@@ -1,11 +1,12 @@
 export const useCapture = () => {
   const supabase = useSupabaseClient();
-  const user = useSupabaseUser();
   const loading = ref(false);
 
   const captureHex = async (hexId: string) => {
-    if (!user.value) {
-      alert('Сначала нужно войти в систему!');
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      console.error('Capture failed: No session in client');
       return;
     }
 
@@ -15,17 +16,13 @@ export const useCapture = () => {
       .from('zones')
       .upsert({ 
         id: hexId, 
-        owner_id: user.value.id,
+        owner_id: session.user.id,
         captured_at: new Date().toISOString()
       });
 
     loading.value = false;
 
-    if (error) {
-      console.error('Ошибка захвата:', error.message);
-    } else {
-      console.log(`Зона ${hexId} теперь твоя!`);
-    }
+    if (error) console.error('DB Error:', error.message);
   };
 
   return { captureHex, loading };
