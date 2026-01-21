@@ -10,6 +10,7 @@ export default defineNuxtConfig({
   
   modules: [
     '@pinia/nuxt',
+    '@nuxtjs/supabase'
   ],
 
   css: [
@@ -68,5 +69,9 @@ export default defineNuxtConfig({
     public: {
       mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN
     }
+  },
+
+  supabase: {
+    redirect: false 
   }
 })

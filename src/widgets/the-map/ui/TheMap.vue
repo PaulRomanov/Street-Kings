@@ -2,6 +2,9 @@
 import mapboxgl from 'mapbox-gl';
 import { useGeolocation } from '@/src/shared/lib/useGeolocation';
 import { useHexgrid } from '@/src/shared/lib/useHexgrid'; // Создай этот файл (код ниже)
+import { useCapture } from '@/src/features/capture-zone/model/useCapture';
+
+const { captureHex, loading: captureLoading } = useCapture();
 
 const { coords, startTracking, stopTracking } = useGeolocation();
 const { getHexId, getHexBoundary } = useHexgrid();
@@ -109,11 +112,25 @@ onUnmounted(() => {
 <template>
   <div class="the-map">
     <div ref="mapContainer" class="the-map__container" />
+    
     <div class="the-map__content">
       <div v-if="currentHexId" class="hex-info">
-        <span class="hex-info__label">ZONE:</span>
+        <span class="hex-info__label">CURRENT SECTOR</span>
         <span class="hex-info__id">{{ currentHexId }}</span>
       </div>
+
+      <div class="actions-panel">
+        <button 
+          v-if="currentHexId"
+          class="capture-btn"
+          :disabled="captureLoading"
+          @click="captureHex(currentHexId)"
+        >
+          <span v-if="!captureLoading">CAPTURE ZONE</span>
+          <span v-else>SCANNING...</span>
+        </button>
+      </div>
+      
       <slot />
     </div>
   </div>
@@ -168,6 +185,36 @@ onUnmounted(() => {
     font-size: 14px;
     font-weight: bold;
     letter-spacing: 1px;
+  }
+}
+
+.actions-panel {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+}
+
+.capture-btn {
+  background: $color-primary;
+  color: $color-bg;
+  border: none;
+  padding: 16px 40px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); // Киберпанк-форма
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 20px rgba($color-primary, 0.4);
+
+  &:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba($color-primary, 0.6);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    background: #666;
   }
 }
 
