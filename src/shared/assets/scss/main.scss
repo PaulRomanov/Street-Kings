@@ -14,3 +14,12 @@ html, body, #__nuxt {
   height: 100%;
   overflow: hidden;
 }
+
+.custom-user-marker {
+  width: 20px;
+  height: 20px;
+  background: $color-primary;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 15px $color-primary;
+}
