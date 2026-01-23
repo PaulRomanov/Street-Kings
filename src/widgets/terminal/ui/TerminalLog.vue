@@ -6,22 +6,20 @@ const addLog = (text: string, type: 'system' | 'error' | 'success' = 'system') =
   const id = logId++;
   logs.value.push({ id, text, type });
   
-  // Удаляем сообщение через 5 секунд, чтобы не забивать экран
   setTimeout(() => {
     logs.value = logs.value.filter(l => l.id !== id);
   }, 5000);
 };
 
-// Экспортируем метод, чтобы вызывать его извне
 defineExpose({ addLog });
 </script>
 
 <template>
   <div class="terminal-log">
     <TransitionGroup name="log-fade">
-      <div v-for="log in logs" :key="log.id" :class="['log-item', `log-item--${log.type}`]">
-        <span class="log-item__prefix">[{{ log.type.toUpperCase() }}]:</span>
-        <span class="log-item__text">{{ log.text }}</span>
+      <div v-for="log in logs" :key="log.id" :class="['terminal-log__item', `terminal-log__item--${log.type}`]">
+        <span class="terminal-log__prefix">[{{ log.type.toUpperCase() }}]:</span>
+        <span class="terminal-log__text">{{ log.text }}</span>
       </div>
     </TransitionGroup>
   </div>
@@ -38,21 +36,21 @@ defineExpose({ addLog });
   gap: 8px;
   pointer-events: none;
   font-family: 'Courier New', Courier, monospace;
-}
 
-.log-item {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(5px);
-  padding: 8px 12px;
-  border-left: 3px solid #00f2ff;
-  font-size: 12px;
-  color: #00f2ff;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+  &__item {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    padding: 8px 12px;
+    border-left: 3px solid $color-primary;
+    font-size: 12px;
+    color: $color-primary;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 0 10px rgba($color-primary, 0.2);
 
-  &--error { border-color: #ff0055; color: #ff0055; }
-  &--success { border-color: #39ff14; color: #39ff14; }
+    &--error { border-color: $color-error; color: $color-error; }
+    &--success { border-color: $color-success; color: $color-success; }
+  }
 
   &__prefix { font-weight: bold; margin-right: 8px; opacity: 0.7; }
 }

@@ -66,7 +66,8 @@ const emit = defineEmits(['colorChanged']);
   backdrop-filter: blur(10px);
   padding: 15px;
   border-radius: 2px;
-  border: 1px solid rgba(white, 0.1);
+  border-radius: 2px;
+  border: 1px solid $color-border-light;
   pointer-events: auto;
 
   &__label {
@@ -99,7 +100,7 @@ const emit = defineEmits(['colorChanged']);
   }
 
   &--active {
-    border-color: white;
+    border-color: $color-white;
     transform: scale(1.1);
     box-shadow: 0 0 15px var(--node-color);
   }

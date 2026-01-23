@@ -1,0 +1,123 @@
+import mapboxgl from 'mapbox-gl';
+import { useHexgrid } from '@/src/shared/lib/useHexgrid';
+import { useZones } from '@/src/entities/zone/model/useZones';
+import { COLORS } from '@/src/shared/config/colors';
+
+export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson: Ref<any>) => {
+  const { getHexBoundary, getVisibleHexIds } = useHexgrid();
+  const { allZones } = useZones();
+  
+  const neutralHexGeoJson = ref({ type: 'FeatureCollection', features: [] });
+
+  const initLayers = () => {
+    if (!map.value) return;
+
+    // --- SOURCES ---
+    // Текущий сектор игрока
+    if (!map.value.getSource('current-hex')) {
+        map.value.addSource('current-hex', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+    }
+
+    // Захваченные зоны (всегда Res 9)
+    if (!map.value.getSource('captured-zones')) {
+      map.value.addSource('captured-zones', {
+        type: 'geojson',
+        data: initialZonesGeoJson.value
+      });
+    }
+
+    // Нейтральные зоны (динамический Res)
+    if (!map.value.getSource('neutral-hexes')) {
+      map.value.addSource('neutral-hexes', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+    }
+
+    // --- LAYERS ---
+    if (!map.value.getLayer('captured-fill')) {
+      map.value.addLayer({
+        id: 'captured-fill',
+        type: 'fill',
+        source: 'captured-zones',
+        paint: {
+          'fill-color': ['get', 'color'], 
+          'fill-opacity': 0.6,
+          'fill-outline-color': COLORS.WHITE
+        }
+      });
+    }
+
+    if (!map.value.getLayer('hex-outline')) {
+      map.value.addLayer({
+        id: 'hex-outline',
+        type: 'line',
+        source: 'current-hex',
+        paint: {
+          'line-color': COLORS.PRIMARY,
+          'line-width': 3
+        }
+      });
+    }
+
+    if (!map.value.getLayer('neutral-hex-outline')) {
+      map.value.addLayer({
+        id: 'neutral-hex-outline',
+        type: 'line',
+        source: 'neutral-hexes',
+        paint: {
+          'line-color': COLORS.PRIMARY,
+          'line-width': 1,
+          'line-dasharray': [2, 2],
+          'line-opacity': 0.4
+        }
+      });
+    }
+  };
+
+
+
+  const updateNeutralLayer = () => {
+    if (!map.value) return;
+  
+    const zoom = map.value.getZoom();
+    const source = map.value.getSource('neutral-hexes') as mapboxgl.GeoJSONSource;
+    
+    if (!source) return;
+  
+    const visibleHexIds = getVisibleHexIds(map.value, zoom);
+  
+    if (visibleHexIds.length === 0) {
+      source.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+  
+    const capturedHexIds = new Set(allZones.value.map(z => z.id));
+    
+    const features = visibleHexIds
+      .filter(id => !capturedHexIds.has(id))
+      .map(hexId => ({
+        type: 'Feature',
+        id: hexId,
+        geometry: {
+          type: 'Polygon',
+          coordinates: getHexBoundary(hexId)
+        },
+        properties: {
+          resolution: 9 
+        }
+      }));
+  
+    source.setData({
+      type: 'FeatureCollection',
+      features: features
+    } as any);
+  
+    // console.log(`[GRID DEBUG]: Zoom: ${zoom.toFixed(2)} | Visible: ${visibleHexIds.length} | Neutral: ${features.length}`);
+  };
+
+  return { initLayers, updateNeutralLayer, neutralHexGeoJson };
+};

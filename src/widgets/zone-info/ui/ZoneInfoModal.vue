@@ -35,13 +35,13 @@ const closeModal = () => {
   <div v-if="isVisible && zoneInfo" class="zone-info-modal-overlay" @click.self="closeModal">
     <div class="zone-info-modal">
       <button class="zone-info-modal__close-btn" @click="closeModal">×</button>
-      <h2>Сектор {{ zoneInfo.id }}</h2>
-      <p>Статус: <strong>{{ zoneInfo.status }}</strong></p>
-      <div v-if="zoneInfo.owner" class="owner-info">
-        <p>Владелец ID: <span :style="{ color: zoneInfo.ownerColor }">{{ zoneInfo.owner }}</span></p>
-        <p>Захвачен: {{ zoneInfo.capturedAt }}</p>
+      <h2 class="zone-info-modal__title">Сектор {{ zoneInfo.id }}</h2>
+      <p class="zone-info-modal__status">Статус: <strong>{{ zoneInfo.status }}</strong></p>
+      <div v-if="zoneInfo.owner" class="zone-info-modal__owner-info">
+        <p class="zone-info-modal__detail">Владелец ID: <span :style="{ color: zoneInfo.ownerColor }">{{ zoneInfo.owner }}</span></p>
+        <p class="zone-info-modal__detail">Захвачен: {{ zoneInfo.capturedAt }}</p>
       </div>
-      <div v-else>
+      <div v-else class="zone-info-modal__empty-state">
         <p>На данный момент сектор ничей.</p>
       </div>
     </div>
@@ -64,7 +64,7 @@ const closeModal = () => {
   backdrop-filter: blur(15px);
   padding: 30px;
   border-radius: 8px;
-  border: 1px solid rgba(white, 0.1);
+  border: 1px solid $color-border-light;
   box-shadow: 0 0 40px rgba($color-primary, 0.3);
   color: $color-text;
   max-width: 400px;
@@ -85,14 +85,14 @@ const closeModal = () => {
     }
   }
 
-  h2 {
+  &__title {
     color: $color-primary;
     margin-top: 0;
     margin-bottom: 20px;
     text-transform: uppercase;
   }
 
-  .owner-info {
+  &__owner-info {
     margin-top: 20px;
     border-top: 1px dashed rgba($color-text, 0.2);
     padding-top: 15px;

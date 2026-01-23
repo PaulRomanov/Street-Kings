@@ -20,7 +20,7 @@ export const useGeolocation = () => {
         error.value = err.message;
       },
       {
-        enableHighAccuracy: true, // Важно для точности захвата зон
+        enableHighAccuracy: true,
         timeout: 5000,
         maximumAge: 0
       }
