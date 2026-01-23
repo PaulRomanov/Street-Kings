@@ -11,7 +11,7 @@ import TerminalLog from '@/src/widgets/terminal/ui/TerminalLog.vue';
 const { allZones, fetchZones, subscribeToZones } = useZones()
 const { captureHex, loading: captureLoading } = useCapture();
 const { coords, startTracking, stopTracking } = useGeolocation();
-const { getHexId, getHexBoundary, getVisibleHexIds, getResolutionFromZoom } = useHexgrid();
+const { getHexBoundary, getVisibleHexIds, getHexId } = useHexgrid();
 const { token, style } = useMapboxConfig();
 const user = useSupabaseUser();
 
@@ -86,35 +86,6 @@ const isZoneCapturedByMe = computed(() => {
   return false;
 });
 
-const neutralHexGeoJson = computed(() => {
-  if (!map.value || !coords.value) return { type: 'FeatureCollection', features: [] };
-
-  const currentZoom = map.value.getZoom();
-  const resolution = getResolutionFromZoom(currentZoom);
-  
-  // Получаем все видимые гексагоны на текущем разрешении
-  const visibleHexIds = getVisibleHexIds(map.value, currentZoom);
-  
-  // Фильтруем те, которые уже захвачены
-  const capturedHexIds = new Set(allZones.value.map(z => z.id));
-  const uncapturedHexes = visibleHexIds.filter(id => !capturedHexIds.has(id));
-
-  console.log('HEX RES:', resolution, 'COUNT:', uncapturedHexes.length);
-
-  return {
-    type: 'FeatureCollection',
-    features: uncapturedHexes.map(hexId => ({
-      type: 'Feature',
-      id: hexId,
-      geometry: {
-        type: 'Polygon',
-        coordinates: getHexBoundary(hexId)
-      },
-      properties: {}
-    }))
-  };
-});
-
 const handleCapture = async () => {
   if (!authUserId.value) {
     await syncUser();
@@ -154,6 +125,50 @@ const handleCapture = async () => {
   captureAnimationData.value = null;
 };
 
+const updateNeutralLayer = () => {
+  if (!map.value) return;
+
+  const zoom = map.value.getZoom();
+  const source = map.value.getSource('neutral-hexes') as mapboxgl.GeoJSONSource;
+  
+  if (!source) return;
+
+  // 1. Получаем ID гексагонов. 
+  // Хук useHexgrid сам вернет [], если zoom < 14, так что лишние проверки не нужны.
+  const visibleHexIds = getVisibleHexIds(map.value, zoom);
+
+  // 2. Если гексагонов нет (зум мал или ошибка), очищаем слой и выходим
+  if (visibleHexIds.length === 0) {
+    source.setData({ type: 'FeatureCollection', features: [] });
+    return;
+  }
+
+  // 3. Оптимизированная фильтрация захваченных зон
+  const capturedHexIds = new Set(allZones.value.map(z => z.id));
+  
+  const features = visibleHexIds
+    .filter(id => !capturedHexIds.has(id))
+    .map(hexId => ({
+      type: 'Feature',
+      id: hexId,
+      geometry: {
+        type: 'Polygon',
+        coordinates: getHexBoundary(hexId)
+      },
+      properties: {
+        resolution: 9 
+      }
+    }));
+
+  // 4. Обновляем данные на карте
+  source.setData({
+    type: 'FeatureCollection',
+    features: features
+  } as any);
+
+  console.log(`[GRID DEBUG]: Zoom: ${zoom.toFixed(2)} | Visible: ${visibleHexIds.length} | Neutral: ${features.length}`);
+};
+
 const onColorUpdated = async () => {
   await fetchZones();
   updateNeutralLayer();
@@ -191,39 +206,6 @@ const animateCaptureWave = () => {
   }
 
   requestAnimationFrame(animateCaptureWave);
-};
-
-// Функция обновления нейтральной сетки при изменении вида карты
-const updateNeutralLayer = () => {
-  if (!map.value) return;
-
-  const currentZoom = map.value.getZoom();
-  // Передаем текущий зум явно
-  const visibleHexIds = getVisibleHexIds(map.value, currentZoom);
-  
-  // Берем ID уже захваченных зон
-  const capturedHexIds = new Set(allZones.value.map(z => z.id));
-  
-  // Оставляем только те, что не захвачены
-  const uncapturedHexes = visibleHexIds.filter(id => !capturedHexIds.has(id));
-
-  const geojson = {
-    type: 'FeatureCollection',
-    features: uncapturedHexes.map(hexId => ({
-      type: 'Feature',
-      id: hexId,
-      geometry: {
-        type: 'Polygon',
-        coordinates: getHexBoundary(hexId)
-      },
-      properties: {}
-    }))
-  };
-
-  const source = map.value.getSource('neutral-hexes') as mapboxgl.GeoJSONSource;
-  if (source) {
-    source.setData(geojson as any);
-  }
 };
 
 watch(allZones, () => {
@@ -287,13 +269,13 @@ watch(zonesGeoJson, (newGeoJson) => {
 }, { deep: true })
 
 onMounted(async () => {
-  // 1. Инициализация сессии пользователя перед загрузкой карты
+  // 1. Сначала синхронизируем пользователя
   await syncUser();
   
   if (!mapContainer.value) return;
   mapboxgl.accessToken = token;
 
-  // 2. Создание инстанса карты
+  // 2. Инициализация карты
   map.value = new mapboxgl.Map({
     container: mapContainer.value,
     style: style,
@@ -303,44 +285,43 @@ onMounted(async () => {
     antialias: true
   });
 
-  // 3. Основной блок инициализации после загрузки стилей карты
+  // 3. Настройка после загрузки стилей
   map.value.on('load', async () => {
     if (!map.value) return;
 
     // --- ИСТОЧНИКИ ДАННЫХ (SOURCES) ---
     
-    // Сектор, в котором сейчас находится игрок
+    // Текущий сектор игрока
     map.value.addSource('current-hex', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] }
     });
 
-    // Загрузка захваченных зон из БД и подписка на Realtime
-    await fetchZones()
+    // Захват данных и подписки
+    await fetchZones();
     subscribeToZones();
     startTracking();
 
-    // Сетка уже захваченных территорий
+    // Захваченные зоны (всегда Res 9)
     map.value.addSource('captured-zones', {
       type: 'geojson',
       data: zonesGeoJson.value
     });
 
-    // Динамическая сетка нейтральных (свободных) секторов
+    // Нейтральные зоны (динамический Res)
     map.value.addSource('neutral-hexes', {
       type: 'geojson',
-      data: neutralHexGeoJson.value
+      data: { type: 'FeatureCollection', features: [] }
     });
 
-    // Слой для анимации волны захвата
+    // Анимация захвата
     map.value.addSource('capture-animation', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] }
     });
 
-    // --- ВИЗУАЛЬНЫЕ СЛОИ (LAYERS) ---
+    // --- СЛОИ (LAYERS) ---
 
-    // Отрисовка цвета захваченных зон
     map.value.addLayer({
       id: 'captured-fill',
       type: 'fill',
@@ -352,7 +333,6 @@ onMounted(async () => {
       }
     });
 
-    // Яркая обводка текущего сектора под игроком
     map.value.addLayer({
       id: 'hex-outline',
       type: 'line',
@@ -363,7 +343,6 @@ onMounted(async () => {
       }
     });
 
-    // Пунктирная сетка нейтральных территорий
     map.value.addLayer({
       id: 'neutral-hex-outline',
       type: 'line',
@@ -371,11 +350,11 @@ onMounted(async () => {
       paint: {
         'line-color': '#00f2ff',
         'line-width': 1,
-        'line-dasharray': [2, 2]
+        'line-dasharray': [2, 2],
+        'line-opacity': 0.4
       }
     });
 
-    // Слой анимированной волны (круги)
     map.value.addLayer({
       id: 'capture-wave',
       type: 'circle',
@@ -389,40 +368,41 @@ onMounted(async () => {
       }
     });
 
-    // --- ОБРАБОТЧИКИ СОБЫТИЙ (EVENTS) ---
+    // --- ЛОГИКА ОБНОВЛЕНИЯ (DEBOUNCE) ---
 
-    // Обновление сетки после завершения движения или смены зума
-    map.value.on('moveend', updateNeutralLayer);
-    map.value.on('zoomend', updateNeutralLayer);
+    let timer: any = null;
+    const debouncedUpdate = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        updateNeutralLayer();
+      }, 150); // Небольшая задержка, чтобы H3 не считал на каждом кадре зума
+    };
 
-    updateNeutralLayer();
+    // Слушаем окончание движения и зума
+    map.value.on('moveend', debouncedUpdate);
+    map.value.on('zoomend', debouncedUpdate);
 
-    // Клик по захваченному сектору (открытие модалки)
+    // --- ИНТЕРАКТИВ ---
+
     map.value.on('click', 'captured-fill', (e) => {
       const clickedHexId = e.features?.[0]?.id?.toString();
       if (clickedHexId) openZoneModal(clickedHexId);
     });
 
-    // Клик по нейтральному сектору
     map.value.on('click', 'neutral-hex-outline', (e) => {
       const clickedHexId = e.features?.[0]?.id?.toString();
       if (clickedHexId) openZoneModal(clickedHexId);
     });
 
-    // Логирование изменения масштаба в терминал
-    map.value.on('zoomend', () => {
-      const zoom = map.value?.getZoom().toFixed(1);
-    });
-
-    // Интерактивность: меняем курсор на "палец" при наведении на гексагоны
     map.value.on('mouseenter', ['captured-fill', 'neutral-hex-outline'], () => {
       map.value!.getCanvas().style.cursor = 'pointer';
     });
+    
     map.value.on('mouseleave', ['captured-fill', 'neutral-hex-outline'], () => {
       map.value!.getCanvas().style.cursor = '';
     });
 
-    // Принудительный первый запуск отрисовки сетки и цикла анимации
+    // Первый запуск отрисовки
     updateNeutralLayer();
     requestAnimationFrame(animateCaptureWave);
   });

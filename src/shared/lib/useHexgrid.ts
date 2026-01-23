@@ -1,45 +1,41 @@
+import * as h3 from 'h3-js';
 import { latLngToCell, cellToBoundary, gridDisk } from 'h3-js';
 
 export const useHexgrid = () => {
-  const RESOLUTION = 9; 
-
-  const getHexId = (lat: number, lng: number) => {
-    return latLngToCell(lat, lng, RESOLUTION);
-  };
-
-  const getHexBoundary = (hexId: string) => {
-    const boundary = cellToBoundary(hexId);
-    const lngLatBoundary = boundary.map(([lat, lng]) => [lng, lat]);
-    lngLatBoundary.push(lngLatBoundary[0]); 
-    return [lngLatBoundary];
+  const GRID_CONFIG = {
+    MIN_ZOOM: 14.0,     
+    RESOLUTION: 9,    
+    DISK_RADIUS: 12   
   };
 
   const getVisibleHexIds = (map: mapboxgl.Map, zoom: number): string[] => {
-    if (!map) return [];
-  
+    if (!map || zoom < GRID_CONFIG.MIN_ZOOM) return [];
+    
     try {
       const center = map.getCenter();
-      const res = getResolutionFromZoom(zoom);
       
-      // Используем уже импортированную в начале файла функцию latLngToCell
-      const centerHex = latLngToCell(center.lat, center.lng, res);
-      
-      // Используем уже импортированную функцию gridDisk
-      // Радиус 12 гексагонов покроет весь экран на зуме 16
-      return gridDisk(centerHex, 12); 
+      const centerHex = h3.latLngToCell(center.lat, center.lng, GRID_CONFIG.RESOLUTION);
+
+      return h3.gridDisk(centerHex, GRID_CONFIG.DISK_RADIUS);
     } catch (e) {
-      console.warn('H3 Grid Disk error:', e);
+      console.error('[GRID ERROR]:', e);
       return [];
     }
   };
 
-  const getResolutionFromZoom = (zoom: number): number => {
-    if (!zoom && zoom !== 0) return 9;
-    const z = Math.round(zoom);
-    if (z >= 15) return 9;
-    if (z >= 13) return 8;
-    return 7;
-  };
+  const getHexId = (lat: number, lng: number): string => {
+    return h3.latLngToCell(lat, lng, GRID_CONFIG.RESOLUTION); // Всегда 9
+  }
 
-  return { getHexId, getHexBoundary, getVisibleHexIds, getResolutionFromZoom, RESOLUTION };
+  return {
+    getVisibleHexIds,
+    getHexId,
+    getHexBoundary: (hexId: string) => {
+      const boundary = h3.cellToBoundary(hexId);
+      const lngLat = boundary.map(([lat, lng]) => [lng, lat]);
+      lngLat.push(lngLat[0]);
+      return [lngLat];
+    },
+    GRID_MIN_ZOOM: GRID_CONFIG.MIN_ZOOM 
+  };
 };
