@@ -5,21 +5,39 @@ import { useHexgrid } from '@/src/shared/lib/useHexgrid';
 import { useCapture } from '@/src/features/capture-zone/model/useCapture';
 import { useZones } from '@/src/entities/zone/model/useZones'
 import ColorPicker from '@/src/widgets/user-profile/ui/ColorPicker.vue';
+import ZoneInfoModal from '@/src/widgets/zone-info/ui/ZoneInfoModal.vue';
+import TerminalLog from '@/src/widgets/terminal/ui/TerminalLog.vue';
 
 const { allZones, fetchZones, subscribeToZones } = useZones()
-
 const { captureHex, loading: captureLoading } = useCapture();
-
 const { coords, startTracking, stopTracking } = useGeolocation();
-const { getHexId, getHexBoundary } = useHexgrid();
+const { getHexId, getHexBoundary, getVisibleHexIds, getResolutionFromZoom } = useHexgrid();
+const { token, style } = useMapboxConfig();
+const user = useSupabaseUser();
 
 const mapContainer = ref<HTMLElement | null>(null);
 const map = shallowRef<mapboxgl.Map | null>(null);
 const userMarker = shallowRef<mapboxgl.Marker | null>(null);
-const { token, style } = useMapboxConfig();
-
-const user = useSupabaseUser();
 const authUserId = ref<string | null>(null);
+const captureAnimationData = ref<{
+  center: [number, number] | null;
+  radius: number;
+  opacity: number;
+} | null>(null);
+const showZoneModal = ref(false);
+const selectedHexForModal = ref<string | null>(null);
+const terminalRef = ref<InstanceType<typeof TerminalLog> | null>(null);
+
+const openZoneModal = (hexId: string) => {
+  selectedHexForModal.value = hexId;
+  showZoneModal.value = true;
+};
+
+const closeZoneModal = () => {
+  showZoneModal.value = false;
+  selectedHexForModal.value = null;
+};
+
 
 const currentHexId = computed(() => 
   coords.value ? getHexId(coords.value.lat, coords.value.lng) : null
@@ -68,26 +86,149 @@ const isZoneCapturedByMe = computed(() => {
   return false;
 });
 
-const handleCapture = async () => {
-  if (!authUserId.value) await syncUser();
+const neutralHexGeoJson = computed(() => {
+  if (!map.value || !coords.value) return { type: 'FeatureCollection', features: [] };
+
+  const currentZoom = map.value.getZoom();
+  const resolution = getResolutionFromZoom(currentZoom);
   
+  // Получаем все видимые гексагоны на текущем разрешении
+  const visibleHexIds = getVisibleHexIds(map.value, currentZoom);
+  
+  // Фильтруем те, которые уже захвачены
+  const capturedHexIds = new Set(allZones.value.map(z => z.id));
+  const uncapturedHexes = visibleHexIds.filter(id => !capturedHexIds.has(id));
+
+  console.log('HEX RES:', resolution, 'COUNT:', uncapturedHexes.length);
+
+  return {
+    type: 'FeatureCollection',
+    features: uncapturedHexes.map(hexId => ({
+      type: 'Feature',
+      id: hexId,
+      geometry: {
+        type: 'Polygon',
+        coordinates: getHexBoundary(hexId)
+      },
+      properties: {}
+    }))
+  };
+});
+
+const handleCapture = async () => {
   if (!authUserId.value) {
-    console.error('Final check: User still not found');
+    await syncUser();
+  }
+  
+  if (!authUserId.value || !currentHexId.value || !coords.value) {
+    console.error('Capture aborted: Missing user, hex or coords');
     return;
   }
 
-  if (currentHexId.value) {
+  terminalRef.value?.addLog(`Initializing scan for sector ${currentHexId.value}...`);
+
+  captureAnimationData.value = {
+    center: [coords.value.lng, coords.value.lat],
+    radius: 0,
+    opacity: 1
+  };
+
+  animateCaptureWave(); 
+
+  if (navigator.vibrate) {
+    navigator.vibrate(100); 
+  }
+
+  try {
     await captureHex(currentHexId.value);
     await fetchZones();
+    
+    terminalRef.value?.addLog(`Sector ${currentHexId.value.substring(0, 8)}... localized.`, 'success');
+    terminalRef.value?.addLog(`Domain override complete. Node secured.`, 'success');
+
+    console.log(`Sector ${currentHexId.value} captured successfully!`);
+  } catch (error) {
+    terminalRef.value?.addLog(`Breach failed: security protocol active.`, 'error');
+    console.error('Failed to capture zone:', error);
   }
+  captureAnimationData.value = null;
 };
 
 const onColorUpdated = async () => {
   await fetchZones();
+  updateNeutralLayer();
 };
 
-watch(user, (val) => {
-}, { immediate: true });
+const animateCaptureWave = () => {
+  if (!map.value || !captureAnimationData.value) return;
+
+  captureAnimationData.value.radius += 8; 
+  captureAnimationData.value.opacity -= 0.02; 
+
+  if (captureAnimationData.value.opacity <= 0) {
+    captureAnimationData.value = null;
+    const source = map.value.getSource('capture-animation') as mapboxgl.GeoJSONSource;
+    if (source) source.setData({ type: 'FeatureCollection', features: [] });
+    return;
+  }
+
+  const source = map.value.getSource('capture-animation') as mapboxgl.GeoJSONSource;
+  if (source) {
+    source.setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: captureAnimationData.value.center
+        },
+        properties: {
+          radius: captureAnimationData.value.radius,
+          opacity: captureAnimationData.value.opacity
+        }
+      }]
+    });
+  }
+
+  requestAnimationFrame(animateCaptureWave);
+};
+
+// Функция обновления нейтральной сетки при изменении вида карты
+const updateNeutralLayer = () => {
+  if (!map.value) return;
+
+  const currentZoom = map.value.getZoom();
+  // Передаем текущий зум явно
+  const visibleHexIds = getVisibleHexIds(map.value, currentZoom);
+  
+  // Берем ID уже захваченных зон
+  const capturedHexIds = new Set(allZones.value.map(z => z.id));
+  
+  // Оставляем только те, что не захвачены
+  const uncapturedHexes = visibleHexIds.filter(id => !capturedHexIds.has(id));
+
+  const geojson = {
+    type: 'FeatureCollection',
+    features: uncapturedHexes.map(hexId => ({
+      type: 'Feature',
+      id: hexId,
+      geometry: {
+        type: 'Polygon',
+        coordinates: getHexBoundary(hexId)
+      },
+      properties: {}
+    }))
+  };
+
+  const source = map.value.getSource('neutral-hexes') as mapboxgl.GeoJSONSource;
+  if (source) {
+    source.setData(geojson as any);
+  }
+};
+
+watch(allZones, () => {
+  updateNeutralLayer();
+}, { deep: true });
 
 watch(user, async (newUser) => {
   if (process.client && newUser) {
@@ -95,6 +236,12 @@ watch(user, async (newUser) => {
     fetchZones();
   }
 }, { immediate: true });
+
+watch(user, (val) => {
+  if (val) {
+    terminalRef.value?.addLog(`User linked: ${val.email?.split('@')[0]}`, 'success');
+  }
+});
 
 watch(coords, (newCoords) => {
   if (!newCoords || !map.value) return;
@@ -140,13 +287,13 @@ watch(zonesGeoJson, (newGeoJson) => {
 }, { deep: true })
 
 onMounted(async () => {
+  // 1. Инициализация сессии пользователя перед загрузкой карты
   await syncUser();
-  const supabase = useSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-
+  
   if (!mapContainer.value) return;
   mapboxgl.accessToken = token;
 
+  // 2. Создание инстанса карты
   map.value = new mapboxgl.Map({
     container: mapContainer.value,
     style: style,
@@ -156,25 +303,45 @@ onMounted(async () => {
     antialias: true
   });
 
+  // 3. Основной блок инициализации после загрузки стилей карты
   map.value.on('load', async () => {
     if (!map.value) return;
 
+    // --- ИСТОЧНИКИ ДАННЫХ (SOURCES) ---
+    
+    // Сектор, в котором сейчас находится игрок
     map.value.addSource('current-hex', {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] }
     });
 
+    // Загрузка захваченных зон из БД и подписка на Realtime
     await fetchZones()
     subscribeToZones();
     startTracking();
 
-    map.value?.addSource('captured-zones', {
+    // Сетка уже захваченных территорий
+    map.value.addSource('captured-zones', {
       type: 'geojson',
       data: zonesGeoJson.value
-    })
+    });
 
-    // Слой заливки гексагона
-    map.value?.addLayer({
+    // Динамическая сетка нейтральных (свободных) секторов
+    map.value.addSource('neutral-hexes', {
+      type: 'geojson',
+      data: neutralHexGeoJson.value
+    });
+
+    // Слой для анимации волны захвата
+    map.value.addSource('capture-animation', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+
+    // --- ВИЗУАЛЬНЫЕ СЛОИ (LAYERS) ---
+
+    // Отрисовка цвета захваченных зон
+    map.value.addLayer({
       id: 'captured-fill',
       type: 'fill',
       source: 'captured-zones',
@@ -183,20 +350,81 @@ onMounted(async () => {
         'fill-opacity': 0.6,
         'fill-outline-color': '#ffffff'
       }
-    })
+    });
 
-    // Слой светящейся границы
+    // Яркая обводка текущего сектора под игроком
     map.value.addLayer({
       id: 'hex-outline',
       type: 'line',
       source: 'current-hex',
       paint: {
         'line-color': '#00f2ff',
-        'line-width': 3,
-        'line-blur': 1
+        'line-width': 3
       }
     });
 
+    // Пунктирная сетка нейтральных территорий
+    map.value.addLayer({
+      id: 'neutral-hex-outline',
+      type: 'line',
+      source: 'neutral-hexes',
+      paint: {
+        'line-color': '#00f2ff',
+        'line-width': 1,
+        'line-dasharray': [2, 2]
+      }
+    });
+
+    // Слой анимированной волны (круги)
+    map.value.addLayer({
+      id: 'capture-wave',
+      type: 'circle',
+      source: 'capture-animation',
+      paint: {
+        'circle-color': '#00f2ff',
+        'circle-radius': ['get', 'radius'],
+        'circle-opacity': ['get', 'opacity'],
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff'
+      }
+    });
+
+    // --- ОБРАБОТЧИКИ СОБЫТИЙ (EVENTS) ---
+
+    // Обновление сетки после завершения движения или смены зума
+    map.value.on('moveend', updateNeutralLayer);
+    map.value.on('zoomend', updateNeutralLayer);
+
+    updateNeutralLayer();
+
+    // Клик по захваченному сектору (открытие модалки)
+    map.value.on('click', 'captured-fill', (e) => {
+      const clickedHexId = e.features?.[0]?.id?.toString();
+      if (clickedHexId) openZoneModal(clickedHexId);
+    });
+
+    // Клик по нейтральному сектору
+    map.value.on('click', 'neutral-hex-outline', (e) => {
+      const clickedHexId = e.features?.[0]?.id?.toString();
+      if (clickedHexId) openZoneModal(clickedHexId);
+    });
+
+    // Логирование изменения масштаба в терминал
+    map.value.on('zoomend', () => {
+      const zoom = map.value?.getZoom().toFixed(1);
+    });
+
+    // Интерактивность: меняем курсор на "палец" при наведении на гексагоны
+    map.value.on('mouseenter', ['captured-fill', 'neutral-hex-outline'], () => {
+      map.value!.getCanvas().style.cursor = 'pointer';
+    });
+    map.value.on('mouseleave', ['captured-fill', 'neutral-hex-outline'], () => {
+      map.value!.getCanvas().style.cursor = '';
+    });
+
+    // Принудительный первый запуск отрисовки сетки и цикла анимации
+    updateNeutralLayer();
+    requestAnimationFrame(animateCaptureWave);
   });
 });
 
@@ -209,6 +437,7 @@ onUnmounted(() => {
 
 <template>
   <div class="the-map">
+    <TerminalLog ref="terminalRef" />
     <div ref="mapContainer" class="the-map__container" />
     
     <div v-if="user" class="the-map__content">
@@ -245,6 +474,11 @@ onUnmounted(() => {
       
       <slot />
     </div>
+    <ZoneInfoModal 
+      :hexId="selectedHexForModal" 
+      :isVisible="showZoneModal" 
+      @close="closeZoneModal" 
+    />
   </div>
 </template>
 
