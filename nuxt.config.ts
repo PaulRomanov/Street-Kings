@@ -36,6 +36,20 @@ export default defineNuxtConfig({
     }
   },
 
+  routeRules: {
+    // Отключаем SSR для главной страницы (где карта), делая её чисто клиентской
+    '/': { ssr: false }
+  },
+
+  nitro: {
+    serveStatic: true,
+  },
+
+  // Это поможет избежать проблем с путями воркеров Mapbox
+  experimental: {
+    payloadExtraction: false
+  },
+
   // Настройки для корректной работы Mapbox на стороне клиента
   build: {
     transpile: ['mapbox-gl']
@@ -65,8 +79,10 @@ export default defineNuxtConfig({
     ]
   },
 
-  runtimeConfig: {
+runtimeConfig: {
     public: {
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
+      supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_KEY,
       mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN
     }
   },

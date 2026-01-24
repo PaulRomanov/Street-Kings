@@ -237,27 +237,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="the-map">
-    <TerminalLog ref="terminalRef" />
-    <div ref="mapContainer" class="the-map__container" />
-    
-    <MapOverlay
-      :user="user"
-      :currentHexId="currentHexId"
-      :isZoneCapturedByMe="isZoneCapturedByMe"
-      :captureLoading="captureLoading"
-      @colorUpdated="onColorUpdated"
-      @capture="handleCapture"
-    >
-      <slot />
-    </MapOverlay>
+  <ClientOnly>
+    <div class="the-map">
+      <TerminalLog ref="terminalRef" />
+      <div ref="mapContainer" class="the-map__container" />
+      
+      <MapOverlay
+        :user="user"
+        :currentHexId="currentHexId"
+        :isZoneCapturedByMe="isZoneCapturedByMe"
+        :captureLoading="captureLoading"
+        @colorUpdated="onColorUpdated"
+        @capture="handleCapture"
+      >
+        <slot />
+      </MapOverlay>
 
-    <ZoneInfoModal 
-      :hexId="selectedHexForModal" 
-      :isVisible="showZoneModal" 
-      @close="closeZoneModal" 
-    />
-  </div>
+      <ZoneInfoModal 
+        :hexId="selectedHexForModal" 
+        :isVisible="showZoneModal" 
+        @close="closeZoneModal" 
+      />
+    </div>
+  </ClientOnly>
 </template>
 
 <style lang="scss" scoped>
