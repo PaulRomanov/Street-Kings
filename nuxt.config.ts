@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { fileURLToPath } from 'url';
 
 export default defineNuxtConfig({
@@ -15,7 +16,7 @@ export default defineNuxtConfig({
 
   css: [
     '@shared/assets/scss/main.scss',
-    fileURLToPath(new URL('./node_modules/mapbox-gl/dist/mapbox-gl.css', import.meta.url))
+    'mapbox-gl/dist/mapbox-gl.css'
   ],
 
   vite: {
@@ -28,16 +29,10 @@ export default defineNuxtConfig({
     },
     optimizeDeps: {
       include: ['mapbox-gl'],
-    },
-    resolve: {
-      alias: {
-        'mapbox-gl': fileURLToPath(new URL('./node_modules/mapbox-gl/dist/esm-min/mapbox-gl.js', import.meta.url))
-      }
     }
   },
 
   routeRules: {
-    // Отключаем SSR для главной страницы (где карта), делая её чисто клиентской
     '/': { ssr: false }
   },
 
@@ -45,28 +40,26 @@ export default defineNuxtConfig({
     serveStatic: true,
   },
 
-  // Это поможет избежать проблем с путями воркеров Mapbox
   experimental: {
     payloadExtraction: false
   },
 
-  // Настройки для корректной работы Mapbox на стороне клиента
-  build: {
-    transpile: ['mapbox-gl']
-  },
 
   typescript: {
     strict: true
   },
 
-  components: [
-    { path: '~/src/widgets', pathPrefix: false },
-    { path: '~/src/features', pathPrefix: false },
-    { path: '~/src/entities', pathPrefix: false },
-    { path: '~/src/shared', pathPrefix: false },
-  ],
+  components: {
+    dirs: [
+      { path: '~/src/widgets', extensions: ['vue'], pathPrefix: false },
+      { path: '~/src/features', extensions: ['vue'], pathPrefix: false },
+      { path: '~/src/entities', extensions: ['vue'], pathPrefix: false },
+      { path: '~/src/shared', extensions: ['vue'], pathPrefix: false },
+    ]
+  },
   
   alias: {
+    '@': fileURLToPath(new URL('./', import.meta.url)),
     '@shared': fileURLToPath(new URL('./src/shared', import.meta.url)),
     '@entities': fileURLToPath(new URL('./src/entities', import.meta.url)),
     '@features': fileURLToPath(new URL('./src/features', import.meta.url)),
@@ -74,20 +67,28 @@ export default defineNuxtConfig({
   },
 
   imports: {
-    dirs: [
-      'src/shared/api/**'
-    ]
+    dirs: ['src/shared/api']
   },
 
-runtimeConfig: {
+  runtimeConfig: {
+    supabaseUrl: process.env.SUPABASE_URL,
+    supabaseKey: process.env.SUPABASE_KEY,
+
     public: {
-      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
-      supabaseKey: process.env.NUXT_PUBLIC_SUPABASE_KEY,
+      supabaseUrl: process.env.SUPABASE_URL,
+      supabaseKey: process.env.SUPABASE_KEY,
       mapboxToken: process.env.NUXT_PUBLIC_MAPBOX_TOKEN
     }
   },
 
   supabase: {
     redirect: false 
-  }
+  },
+
+  ignore: [
+    '**/.output',
+    '**/.nuxt',
+    // '**/node_modules',
+    '**/.git'
+  ]
 })

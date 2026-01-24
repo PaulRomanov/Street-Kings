@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AuthForm from '@/src/features/auth-form/ui/AuthForm.vue'
+import TheMap from '@/src/widgets/the-map/ui/TheMap.vue'
 const user = useSupabaseUser()
 </script>
 

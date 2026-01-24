@@ -2,6 +2,7 @@
 import mapboxgl from 'mapbox-gl';
 import { useGeolocation } from '@/src/shared/lib/useGeolocation';
 import { useHexgrid } from '@/src/shared/lib/useHexgrid';
+import { useMapboxConfig } from '@/src/shared/api/mapbox/config'
 import { useCapture } from '@/src/features/capture-zone/model/useCapture';
 import { useZones } from '@/src/entities/zone/model/useZones';
 import ZoneInfoModal from '@/src/widgets/zone-info/ui/ZoneInfoModal.vue';
@@ -9,6 +10,7 @@ import TerminalLog from '@/src/widgets/terminal/ui/TerminalLog.vue';
 import MapOverlay from './MapOverlay.vue';
 import { useMapLayers } from '../model/useMapLayers';
 import { useZoneCapture } from '../model/useZoneCapture';
+
 
 const { allZones, fetchZones, subscribeToZones } = useZones();
 const { captureHex, loading: captureLoading } = useCapture();
