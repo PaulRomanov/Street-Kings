@@ -1,16 +1,22 @@
+import { useZoneStore } from '@/src/stores/useZoneStore'
+import { storeToRefs } from 'pinia'
+
 export const useZones = () => {
   const supabase = useSupabaseClient()
-  const allZones = ref<any[]>([])
+  const zoneStore = useZoneStore()
+  const { allZones } = storeToRefs(zoneStore)
 
-const fetchZones = async () => {
-  const { data, error } = await supabase
-    .from('zones')
-    .select('id, owner_id, profiles(color, username)')
-  
-  if (data) {
-    allZones.value = [...data] 
+  const fetchZones = async () => {
+    zoneStore.isLoading = true
+    const { data, error } = await supabase
+      .from('hexagons')
+      .select('id, owner_id, storage, updated_at, profiles(color, username)')
+    
+    if (data) {
+      zoneStore.setZones(data) 
+    }
+    zoneStore.isLoading = false
   }
-}
 
   const subscribeToZones = () => {
     const channel = supabase
@@ -20,7 +26,7 @@ const fetchZones = async () => {
         { 
           event: '*', 
           schema: 'public', 
-          table: 'zones' 
+          table: 'hexagons' 
         }, 
         () => {
           fetchZones();

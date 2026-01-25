@@ -2,8 +2,10 @@
 import AuthForm from '@/src/features/auth-form/ui/AuthForm.vue'
 import ProfileSettings from '@/src/features/profile/ui/ProfileSettings.vue'
 import TheMap from '@/src/widgets/the-map/ui/TheMap.vue'
+import { useUserStore } from '@/src/stores/useUserStore'
 
 const user = useSupabaseUser()
+const userStore = useUserStore()
 const isProfileOpen = ref(false)
 
 const toggleProfile = () => {
@@ -19,10 +21,31 @@ const toggleProfile = () => {
         <div class="game-page__ui">
           <div class="game-page__header">
             <h1 class="game-page__title">STREET KINGS</h1>
-            <button class="profile-toggle" @click="toggleProfile">
+            <button class="game-page__profile-toggle" @click="toggleProfile">
               ЛИЧНЫЙ КАБИНЕТ
             </button>
           </div>
+
+          <div class="game-page__status-bar">
+            <div class="game-page__status-item">
+              <span class="game-page__status-label">SECTOR</span>
+              <span class="game-page__status-value">{{ userStore.currentHexId?.substring(0, 12) || 'SCANNING...' }}</span>
+              <div v-if="userStore.currentHexId" class="game-page__status-tag" :class="{ 
+                'game-page__status-tag--owned': userStore.isZoneCapturedByMe,
+                'game-page__status-tag--enemy': userStore.currentZoneOwner && !userStore.isZoneCapturedByMe 
+              }">
+                {{ userStore.isZoneCapturedByMe ? 'SECURED' : (userStore.currentZoneOwner ? 'ENEMY' : 'NEUTRAL') }}
+              </div>
+            </div>
+
+            <div class="game-page__status-item">
+              <span class="game-page__status-label">BALANCE</span>
+              <div class="game-page__status-value game-page__status-value--success">
+                ⚡ {{ userStore.profile?.balance?.toFixed(1) || 0 }} IP
+              </div>
+            </div>
+          </div>
+
           <div v-if="isProfileOpen" class="game-page__settings-wrapper">
             <ProfileSettings @close="isProfileOpen = false" @saved="isProfileOpen = false" />
           </div>
@@ -53,7 +76,7 @@ const toggleProfile = () => {
     height: 100%;
     pointer-events: none; 
     padding: 20px;
-    z-index: 10;
+    z-index: $z-ui;
     display: flex;
     flex-direction: column;
   }
@@ -81,23 +104,24 @@ const toggleProfile = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba($color-black, 0.5);
     backdrop-filter: blur(4px);
-    z-index: 999;
+    z-index: $z-modal;
     pointer-events: auto;
     padding: 20px;
   }
 
-  .profile-toggle {
-    background: rgba(0, 0, 0, 0.7);
+  &__profile-toggle {
+    background: rgba($color-black, 0.7);
     border: 1px solid $color-primary;
-    color: white;
+    color: $color-white;
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
     white-space: nowrap;
-    &:hover { background: $color-primary; }
+    transition: all 0.2s;
+    &:hover { background: $color-primary; color: $color-black; }
   }
 
   &__auth {
@@ -108,15 +132,57 @@ const toggleProfile = () => {
     justify-content: center;
     background: $color-bg;
   }
+
+  &__status-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    pointer-events: none;
+  }
+
+  &__status-item {
+    background: rgba($color-black, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba($color-primary, 0.2);
+    padding: 8px 16px;
+    border-radius: 4px;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+  }
+
+  &__status-label {
+    font-size: 8px;
+    color: rgba($color-text, 0.4);
+    letter-spacing: 1px;
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+
+  &__status-value {
+    font-family: monospace;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: $color-primary;
+
+    &--success { color: $color-success; }
+  }
+
+  &__status-tag {
+    font-size: 8px;
+    margin-top: 4px;
+    color: $color-text-muted;
+    &--owned { color: $color-success; }
+    &--enemy { color: $color-error; }
+  }
 }
 
 @media (max-width: 470px) {
-  .game-page__title {
-    font-size: 1.2rem;
-  }
-  .profile-toggle {
-    padding: 6px 12px;
-    font-size: 0.8rem;
+  .game-page {
+    &__title { font-size: 1.2rem; }
+    &__profile-toggle { padding: 6px 12px; font-size: 0.8rem; }
   }
 }
 

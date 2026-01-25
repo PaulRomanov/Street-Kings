@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { COLORS } from '@/src/shared/config/colors'
 
 export const useUserStore = defineStore('user', () => {
   const supabase = useSupabaseClient()
@@ -11,7 +12,6 @@ export const useUserStore = defineStore('user', () => {
       return
     }
     
-    // Сначала пробуем получить существующий профиль
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -19,13 +19,12 @@ export const useUserStore = defineStore('user', () => {
       .single()
 
     if (error && error.code === 'PGRST116') {
-      // Профиль не найден — создаём новый
       const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
         .insert({ 
           id: userId,
           balance: 20, 
-          color: '#3b82f6' 
+          color: COLORS.PLAYER_PALETTE[0] 
         })
         .select()
         .single()
@@ -39,11 +38,17 @@ export const useUserStore = defineStore('user', () => {
       console.error('Ошибка Supabase в сторе:', error.message)
     } else {
       profile.value = data
-      profile.value = data
     }
+
+    // Подсчитываем количество захваченных гексагенов
+    const { count } = await supabase
+      .from('hexagons')
+      .select('*', { count: 'exact', head: true })
+      .eq('owner_id', userId)
+
+    ownedHexCount.value = count || 0
   }
 
-  // Следим только за ID (sub в JWT)
 watch(() => user.value?.sub, (newId) => {
   if (newId && newId !== 'undefined') {
     fetchProfile()
@@ -62,5 +67,20 @@ watch(() => user.value?.sub, (newId) => {
     }
   }
 
-  return { profile, fetchProfile, updateProfile }
+  const currentHexId = ref<string | null>(null)
+  const isZoneCapturedByMe = ref(false)
+  const currentZoneOwner = ref<string | null>(null)
+  const ownedHexCount = ref(0)
+  const totalIncome = computed(() => (ownedHexCount.value * 0.1).toFixed(2))
+
+  return { 
+    profile, 
+    fetchProfile, 
+    updateProfile, 
+    currentHexId, 
+    isZoneCapturedByMe,
+    currentZoneOwner,
+    ownedHexCount,
+    totalIncome 
+  }
 })

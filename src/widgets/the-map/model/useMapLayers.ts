@@ -83,15 +83,22 @@ export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson:
         type: 'symbol',
         source: 'captured-zones',
         layout: {
-          'text-field': ['get', 'username'],
+          'text-field': [
+            'concat',
+            ['get', 'username'],
+            '\n',
+            ['get', 'storage'],
+            ' IP'
+          ],
           'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-          'text-size': 12,
+          'text-size': 11,
           'text-anchor': 'center',
+          'text-line-height': 1.2,
           'text-allow-overlap': false
         },
         paint: {
-          'text-color': '#FFFFFF',
-          'text-halo-color': '#000000',
+          'text-color': COLORS.WHITE,
+          'text-halo-color': COLORS.BLACK,
           'text-halo-width': 1
         }
       });

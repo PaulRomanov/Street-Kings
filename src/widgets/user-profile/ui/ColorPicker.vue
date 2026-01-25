@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { COLORS } from '@/src/shared/config/colors'
+
 interface Props {
   colors?: string[];
   activeColor?: string;
@@ -6,7 +8,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  colors: () => ['#00f2ff', '#ff0055', '#39ff14', '#bc13fe', '#ffce00', '#ffffff'],
+  colors: () => COLORS.PLAYER_PALETTE,
   activeColor: '',
   label: 'FACTION COLOR'
 });

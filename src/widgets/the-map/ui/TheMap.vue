@@ -12,12 +12,17 @@ import { useMapLayers } from '../model/useMapLayers';
 import { useZoneCapture } from '../model/useZoneCapture';
 
 
+import { useUserStore } from '@/src/stores/useUserStore';
+import { useZoneStore } from '@/src/stores/useZoneStore';
+import { COLORS } from '@/src/shared/config/colors';
+
 const { allZones, fetchZones, subscribeToZones } = useZones();
 const { captureHex, loading: captureLoading } = useCapture();
 const { coords, startTracking, stopTracking } = useGeolocation();
 const { getHexBoundary, getHexId } = useHexgrid();
 const { token, style } = useMapboxConfig();
 const user = useSupabaseUser();
+const userStore = useUserStore();
 
 const mapContainer = ref<HTMLElement | null>(null);
 const map = shallowRef<mapboxgl.Map | null>(null);
@@ -37,9 +42,11 @@ const zonesGeoJson = computed(() => ({
       coordinates: getHexBoundary(zone.id)
     },
     properties: {
+      id: zone.id,
       owner: zone.owner_id,
-      color: zone.profiles?.color || '#808080',
-      username: zone.profiles?.username || 'ANONYMOUS'
+      color: zone.profiles?.color || COLORS.GRAY,
+      username: zone.profiles?.username || 'ANONYMOUS',
+      storage: zone.storage || 0
     }
   }))
 }));
@@ -57,9 +64,11 @@ const closeZoneModal = () => {
   selectedHexForModal.value = null;
 };
 
-const currentHexId = computed(() => 
-  coords.value ? getHexId(coords.value.lat, coords.value.lng) : null
-);
+watch(coords, (newCoords) => {
+  if (newCoords) {
+    userStore.currentHexId = getHexId(newCoords.lat, newCoords.lng);
+  }
+});
 
 const syncUser = async () => {
   const supabase = useSupabaseClient();
@@ -72,41 +81,53 @@ const syncUser = async () => {
   }
 };
 
-const isZoneCapturedByMe = computed(() => {
+const supabase = useSupabaseClient();
+
+// Следим за статусом захвата и владельцем текущей зоны
+watch([() => userStore.currentHexId, allZones], ([hexId, zones]) => {
   const myId = authUserId.value;
-  const hexId = currentHexId.value;
-  
-  if (!hexId || !myId) return false;
-  
-  const zone = allZones.value.find(z => z.id === hexId);
-  return zone ? String(zone.owner_id) === String(myId) : false;
-});
+  if (!hexId || !myId) {
+    userStore.isZoneCapturedByMe = false;
+    userStore.currentZoneOwner = null;
+    return;
+  }
+  const zone = zones.find(z => z.id === hexId);
+  userStore.currentZoneOwner = zone?.owner_id || null;
+  userStore.isZoneCapturedByMe = zone ? String(zone.owner_id) === String(myId) : false;
+}, { immediate: true });
 
 const handleCapture = async () => {
   if (!authUserId.value) await syncUser();
   
-  if (!authUserId.value || !currentHexId.value || !coords.value) {
+  if (!authUserId.value || !userStore.currentHexId || !coords.value) {
     console.error('Capture aborted: Missing user, hex or coords');
     return;
   }
 
-  terminalRef.value?.addLog(`Initializing scan for sector ${currentHexId.value}...`);
+  terminalRef.value?.addLog(`Initializing scan for sector ${userStore.currentHexId}...`);
 
   startAnimation([coords.value.lng, coords.value.lat]);
 
   if (navigator.vibrate) navigator.vibrate(100); 
 
   try {
-    await captureHex(currentHexId.value);
-    await fetchZones();
+    const result = await captureHex(userStore.currentHexId!);
     
-    terminalRef.value?.addLog(`Sector ${currentHexId.value.substring(0, 8)}... localized.`, 'success');
-    terminalRef.value?.addLog(`Domain override complete. Node secured.`, 'success');
-
+    if (result?.success) {
+      await fetchZones();
+      terminalRef.value?.addLog(`Sector ${userStore.currentHexId?.substring(0, 8)}... localized.`, 'success');
+      terminalRef.value?.addLog(`Domain override complete. Node secured. Total cost: ${result.price} IP`, 'success');
+    } else {
+      terminalRef.value?.addLog(`Breach failed: ${result?.message || 'insufficient resources'}`, 'error');
+    }
   } catch (error) {
-    terminalRef.value?.addLog(`Breach failed: security protocol active.`, 'error');
+    terminalRef.value?.addLog(`Critical system failure during breach.`, 'error');
     console.error('Failed to capture zone:', error);
   }
+};
+
+const handleHexClick = (hexId: string) => {
+    openZoneModal(hexId);
 };
 
 const onColorUpdated = async () => {
@@ -152,7 +173,7 @@ watch(coords, (newCoords) => {
   });
 });
 
-watch(currentHexId, (newHexId) => {
+watch(() => userStore.currentHexId, (newHexId) => {
   if (!newHexId || !map.value) return;
 
   const source = map.value.getSource('current-hex') as mapboxgl.GeoJSONSource;
@@ -214,13 +235,14 @@ onMounted(async () => {
       const zoom = map.value?.getZoom().toFixed(1);
     });
 
-    const handleHexClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
-        const clickedHexId = e.features?.[0]?.id?.toString();
-        if (clickedHexId) openZoneModal(clickedHexId);
+    const onMapClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+        const feature = e.features?.[0];
+        const clickedHexId = feature?.properties?.id || feature?.id?.toString();
+        if (clickedHexId) handleHexClick(clickedHexId);
     };
 
-    map.value.on('click', 'captured-fill', handleHexClick);
-    map.value.on('click', 'neutral-hex-outline', handleHexClick);
+    map.value.on('click', 'captured-fill', onMapClick);
+    map.value.on('click', 'neutral-hex-outline', onMapClick);
 
     const setPointer = () => { if (map.value) map.value.getCanvas().style.cursor = 'pointer'; };
     const resetPointer = () => { if (map.value) map.value.getCanvas().style.cursor = ''; };
@@ -246,8 +268,8 @@ onUnmounted(() => {
       
       <MapOverlay
         :user="user"
-        :currentHexId="currentHexId"
-        :isZoneCapturedByMe="isZoneCapturedByMe"
+        :currentHexId="userStore.currentHexId"
+        :isZoneCapturedByMe="userStore.isZoneCapturedByMe"
         :captureLoading="captureLoading"
         @colorUpdated="onColorUpdated"
         @capture="handleCapture"

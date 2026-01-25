@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { defineProps, defineEmits, computed } from 'vue';
 import { useZones } from '@/src/entities/zone/model/useZones';
 import { useHexgrid } from '@/src/shared/lib/useHexgrid';
+import { useZoneStore } from '@/src/stores/useZoneStore';
+import { useUserStore } from '@/src/stores/useUserStore';
+import { storeToRefs } from 'pinia';
+import { onMounted, onUnmounted, ref, computed } from 'vue';
 
 const props = defineProps<{
   hexId: string | null;
@@ -10,21 +13,93 @@ const props = defineProps<{
 
 const emit = defineEmits(['close']);
 
-const { allZones } = useZones();
+const { fetchZones } = useZones();
+const zoneStore = useZoneStore();
+const userStore = useUserStore();
+const { allZones } = storeToRefs(zoneStore);
 const { getHexBoundary } = useHexgrid();
+const supabase = useSupabaseClient();
+const user = useSupabaseUser();
+
+const currentTime = ref(Date.now());
+let tickerInterval: any = null;
+
+onMounted(() => {
+  tickerInterval = setInterval(() => {
+    currentTime.value = Date.now();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (tickerInterval) clearInterval(tickerInterval);
+});
+
+// Расчет накопленных IP в реальном времени (лимит 10, формат X.XX)
+const accumulatedStorage = computed(() => {
+  const zone = allZones.value.find(z => z.id === props.hexId);
+  if (!zone) return 0;
+  
+  const baseStorage = zone.storage || 0;
+  if (!zone.last_income_at) return baseStorage;
+
+  const lastIncomeDate = new Date(zone.last_income_at).getTime();
+  const diffInHours = (currentTime.value - lastIncomeDate) / (1000 * 60 * 60);
+  const earned = diffInHours * 0.1;
+  
+  // Округляем до 2 знаков для визуальной чистоты
+  const total = Math.min(10, baseStorage + earned);
+  return Math.round(total * 100) / 100;
+});
+
 const zoneInfo = computed(() => {
   if (!props.hexId) return null;
   const zone = allZones.value.find(z => z.id === props.hexId);
-  if (!zone) return { status: 'Нейтральный', id: props.hexId };
+  if (!zone) return { status: 'NEUTRAL', id: props.hexId };
 
+  const isMe = String(zone.owner_id) === String(user.value?.sub);
+  
   return {
     id: zone.id,
     owner: zone.owner_id,
+    username: zone.profiles?.username || 'ANONYMOUS',
     ownerColor: zone.profiles?.color || '#ffffff',
-    status: 'Захвачен',
-    capturedAt: zone.captured_at ? new Date(zone.captured_at).toLocaleString() : 'Неизвестно'
+    status: isMe ? 'SECURED' : 'ENEMY',
+    storage: accumulatedStorage.value,
+    capturedAt: zone.updated_at ? new Date(zone.updated_at).toLocaleString() : 'Неизвестно'
   };
 });
+
+const isOwner = computed(() => String(zoneInfo.value?.owner) === String(user.value?.sub));
+
+const harvestIp = async () => {
+  if (!props.hexId) return;
+  const { data, error } = await (supabase.rpc as any)('harvest_hexagon', { 
+    target_hex_id: props.hexId 
+  });
+  
+  if (error) return alert(error.message);
+  if (data?.success) {
+    await fetchZones();
+    await userStore.fetchProfile();
+  } else {
+     alert(data?.message || 'Ошибка сбора');
+  }
+};
+
+const fortifyHex = async () => {
+  if (!props.hexId) return;
+  const { data, error } = await (supabase.rpc as any)('fortify_hexagon', { 
+    target_hex_id: props.hexId
+  });
+
+  if (error) return alert(error.message);
+  if (data?.success) {
+    await fetchZones();
+    await userStore.fetchProfile();
+  } else {
+    alert(data?.message || 'Ошибка укрепления');
+  }
+};
 
 const closeModal = () => {
   emit('close');
@@ -32,70 +107,180 @@ const closeModal = () => {
 </script>
 
 <template>
-  <div v-if="isVisible && zoneInfo" class="zone-info-modal-overlay" @click.self="closeModal">
-    <div class="zone-info-modal">
-      <button class="zone-info-modal__close-btn" @click="closeModal">×</button>
-      <h2 class="zone-info-modal__title">Сектор {{ zoneInfo.id }}</h2>
-      <p class="zone-info-modal__status">Статус: <strong>{{ zoneInfo.status }}</strong></p>
-      <div v-if="zoneInfo.owner" class="zone-info-modal__owner-info">
-        <p class="zone-info-modal__detail">Владелец ID: <span :style="{ color: zoneInfo.ownerColor }">{{ zoneInfo.owner }}</span></p>
-        <p class="zone-info-modal__detail">Захвачен: {{ zoneInfo.capturedAt }}</p>
-      </div>
-      <div v-else class="zone-info-modal__empty-state">
-        <p>На данный момент сектор ничей.</p>
+  <div v-if="isVisible && zoneInfo" class="zone-modal-overlay" @click.self="closeModal">
+    <div class="zone-modal">
+      <button class="zone-modal__close-btn" @click="closeModal">×</button>
+      <h2 class="zone-modal__title">Сектор {{ zoneInfo.id.substring(0, 12) }}...</h2>
+      
+      <div class="zone-modal__content">
+        <p class="zone-modal__status">
+          Статус: <strong :class="{ 
+            'zone-modal__tag--secured': zoneInfo.status === 'SECURED',
+            'zone-modal__tag--enemy': zoneInfo.status === 'ENEMY'
+          }">{{ zoneInfo.status }}</strong>
+        </p>
+
+        <div v-if="zoneInfo.owner" class="zone-modal__details">
+          <div class="zone-detail">
+            <span class="zone-detail__label">Владелец:</span>
+            <span class="zone-detail__value" :style="{ color: zoneInfo.ownerColor }">
+              {{ zoneInfo.username }}
+            </span>
+          </div>
+          <div class="zone-detail">
+            <span class="zone-detail__label">Хранилище:</span>
+            <span 
+              class="zone-detail__value zone-detail__value--highlight" 
+              :class="{ 'zone-detail__value--limit': zoneInfo.storage >= 10 }"
+            >
+              {{ zoneInfo.storage?.toFixed(2) }} / 10.00 IP
+            </span>
+          </div>
+          <div class="zone-detail">
+            <span class="zone-detail__label">Захвачен:</span>
+            <span class="zone-detail__value zone-detail__value--small">{{ zoneInfo.capturedAt }}</span>
+          </div>
+
+          <div v-if="isOwner" class="zone-modal__actions">
+            <button 
+              class="zone-action-btn zone-action-btn--harvest" 
+              :disabled="zoneInfo.storage < 0.01"
+              @click="harvestIp"
+            >
+              Собрать IP
+            </button>
+            <button 
+              class="zone-action-btn zone-action-btn--fortify" 
+              :disabled="zoneInfo.storage >= 10 || (userStore.profile?.balance || 0) < 1"
+              @click="fortifyHex"
+            >
+              Укрепить (+1 IP)
+            </button>
+          </div>
+          <p v-if="isOwner && zoneInfo.storage >= 10" class="zone-modal__limit-warning">Хранилище заполнено</p>
+        </div>
+
+        <div v-else class="zone-modal__empty">
+          <p>Сектор свободен для захвата за 5.00 IP.</p>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.zone-info-modal-overlay {
+.zone-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: $z-modal;
+  backdrop-filter: blur(10px);
 }
 
-.zone-info-modal {
-  background: rgba($color-bg, 0.95);
-  backdrop-filter: blur(15px);
+.zone-modal {
+  background: $color-card-bg;
+  border: 1px solid $color-gray-medium;
   padding: 30px;
-  border-radius: 8px;
-  border: 1px solid $color-border-light;
-  box-shadow: 0 0 40px rgba($color-primary, 0.3);
+  border-radius: 16px;
   color: $color-text;
   max-width: 400px;
   width: 90%;
   position: relative;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 
   &__close-btn {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px;
+    right: 15px;
     background: none;
     border: none;
     font-size: 24px;
-    color: rgba($color-text, 0.5);
+    color: $color-text-muted;
     cursor: pointer;
-    &:hover {
-      color: $color-primary;
-    }
+    &:hover { color: $color-white; }
   }
 
   &__title {
     color: $color-primary;
-    margin-top: 0;
-    margin-bottom: 20px;
-    text-transform: uppercase;
+    margin: 0 0 24px 0;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    font-family: monospace;
   }
 
-  &__owner-info {
-    margin-top: 20px;
-    border-top: 1px dashed rgba($color-text, 0.2);
-    padding-top: 15px;
+  &__status {
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+  }
+
+  &__tag {
+    color: $color-text-muted;
+    &--secured { color: $color-success; }
+    &--enemy { color: $color-error; }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid $color-gray-dark;
+  }
+
+  &__limit-warning {
+    color: $color-error;
+    font-size: 0.7rem;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  &__empty {
+    text-align: center;
+    color: $color-text-muted;
+    padding: 20px 0;
+    font-size: 0.9rem;
+  }
+}
+
+.zone-detail {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  
+  &__label { color: $color-text-muted; }
+  &__value { 
+    font-weight: bold; 
+    &--highlight { color: $color-primary; }
+    &--limit { color: $color-error; }
+    &--small { font-size: 0.75rem; color: $color-gray-light; }
+  }
+}
+
+.zone-action-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &--harvest {
+    background: $color-success;
+    color: #000;
+    &:disabled { background: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
+  }
+
+  &--fortify {
+    background: transparent;
+    border: 1px solid $color-primary;
+    color: $color-primary;
+    &:disabled { border-color: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
   }
 }
 </style>

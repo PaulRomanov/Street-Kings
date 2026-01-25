@@ -11,20 +11,10 @@ const emit = defineEmits(['capture']);
 const handleCapture = () => {
     emit('capture');
 };
-
 </script>
 
 <template>
   <div v-if="user" class="map-overlay">
-    <div v-if="currentHexId" class="map-overlay__hex-info">
-      <span class="map-overlay__hex-label">CURRENT SECTOR</span>
-      <span class="map-overlay__hex-id">{{ currentHexId }}</span>
-      
-      <div class="map-overlay__zone-status" :class="{ 'map-overlay__zone-status--captured': isZoneCapturedByMe }">
-        {{ isZoneCapturedByMe ? 'AREA CONTROLLED' : 'NEUTRAL TERRITORY' }}
-      </div>
-    </div>
-
     <div v-if="user" class="map-overlay__actions-panel">
       <button 
         v-if="currentHexId"
@@ -64,28 +54,6 @@ const handleCapture = () => {
     pointer-events: auto; 
   }
 
-  &__hex-info {
-    background: rgba($color-bg, 0.8);
-    backdrop-filter: blur(10px);
-    border-left: 4px solid $color-primary;
-    padding: 12px 20px;
-    width: fit-content;
-    font-family: monospace;
-  }
-
-  &__hex-label {
-    color: rgba($color-text, 0.5);
-    font-size: 10px;
-    display: block;
-  }
-  
-  &__hex-id {
-    color: $color-primary;
-    font-size: 14px;
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
-
   &__actions-panel {
     width: 100%;
     display: flex;
@@ -115,7 +83,7 @@ const handleCapture = () => {
 
     &:disabled {
       opacity: 0.5;
-      background: #666;
+      background: $color-gray-light;
     }
 
     &--owner {
@@ -127,28 +95,5 @@ const handleCapture = () => {
       clip-path: none;
     }
   }
-
-  &__zone-status {
-    margin-top: 8px;
-    font-size: 11px;
-    font-weight: bold;
-    color: rgba($color-text, 0.4);
-    text-transform: uppercase;
-
-    &--captured {
-      color: $color-primary;
-      text-shadow: 0 0 8px rgba($color-primary, 0.5);
-      
-      &::before {
-        content: '● ';
-        animation: blink 1s infinite;
-      }
-    }
-  }
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
 }
 </style>

@@ -3,26 +3,24 @@ export const useCapture = () => {
   const loading = ref(false);
 
   const captureHex = async (hexId: string) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      console.error('Capture failed: No session in client');
-      return;
-    }
-
     loading.value = true;
     
-    const { error } = await supabase
-      .from('zones')
-      .upsert({ 
-        id: hexId, 
-        owner_id: session.user.id,
-        captured_at: new Date().toISOString()
-      });
+    const { data, error } = await supabase.rpc('capture_hexagon', { 
+      target_hex_id: hexId 
+    });
 
     loading.value = false;
 
-    if (error) console.error('DB Error:', error.message);
+    if (error) {
+      console.error('RPC Error:', error.message);
+      return { success: false, message: error.message };
+    }
+
+    if (data && !data.success) {
+      return { success: false, message: data.message };
+    }
+
+    return { success: true, price: data?.price };
   };
 
   return { captureHex, loading };

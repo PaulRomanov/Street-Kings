@@ -1,35 +1,33 @@
 <script setup lang="ts">
 import { useUserStore } from '@/src/stores/useUserStore'
 import ColorPicker from '@/src/widgets/user-profile/ui/ColorPicker.vue'
+import { COLORS } from '@/src/shared/config/colors'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userStore = useUserStore()
 
-// Local draft state (changes applied only on save)
 const draftUsername = ref('')
 const draftColor = ref('')
-const colorPalette = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+const colorPalette = COLORS.PLAYER_PALETTE
 
 const emit = defineEmits<{
   close: []
   saved: []
 }>()
 
-// Initialize local state from profile
 watch(() => userStore.profile, (profile) => {
   if (profile) {
     draftUsername.value = profile.username || ''
-    draftColor.value = profile.color || '#3b82f6'
+    draftColor.value = profile.color || COLORS.PLAYER_PALETTE[0]
   }
 }, { immediate: true })
 
-// Check if there are unsaved changes
 const hasChanges = computed(() => {
   if (!userStore.profile) return false
   return (
     draftUsername.value !== (userStore.profile.username || '') ||
-    draftColor.value !== (userStore.profile.color || '#3b82f6')
+    draftColor.value !== (userStore.profile.color || COLORS.PLAYER_PALETTE[0])
   )
 })
 
@@ -59,15 +57,13 @@ const saveChanges = async () => {
 }
 
 const handleClose = () => {
-  // Reset draft to current profile values
   if (userStore.profile) {
     draftUsername.value = userStore.profile.username || ''
-    draftColor.value = userStore.profile.color || '#3b82f6'
+    draftColor.value = userStore.profile.color || COLORS.PLAYER_PALETTE[0]
   }
   emit('close')
 }
 
-// Load profile when user is ready
 watch(() => user.value?.sub, async (userId) => {
   if (userId) {
     await userStore.fetchProfile()
@@ -77,7 +73,7 @@ watch(() => user.value?.sub, async (userId) => {
 const canCollect = computed(() => {
   if (!userStore.profile?.last_daily_collect) return true
   const last = new Date(userStore.profile.last_daily_collect).getTime()
-  const now = new Date().getTime()
+  const now = Date.now()
   return now - last > 24 * 60 * 60 * 1000
 })
 
@@ -102,19 +98,19 @@ const collectBonus = async () => {
       <button class="settings-card__close" @click="handleClose">✕</button>
     </div>
 
-    <div v-if="!userStore.profile" class="loader">
+    <div v-if="!userStore.profile" class="settings-card__loader">
       Загрузка данных...
     </div>
     
     <template v-else>
-      <div class="field">
-        <label>Твой позывной (Street Name)</label>
+      <div class="settings-card__field">
+        <label class="settings-card__label">Твой позывной (Street Name)</label>
         <input 
           v-model="draftUsername" 
           type="text" 
           maxlength="15" 
           placeholder="Введите ник..."
-          class="field__input"
+          class="settings-card__input"
         />
       </div>
 
@@ -125,34 +121,35 @@ const collectBonus = async () => {
         @select="selectColor"
       />
 
-      <div class="stats-grid">
+      <div class="settings-card__stats">
         <div class="stat-box">
           <span class="stat-box__label">Баланс</span>
           <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
         </div>
         <div class="stat-box">
-          <span class="stat-box__label">Доход</span>
-          <span class="stat-box__value">0.1 IP / ч.</span>
+          <span class="stat-box__label">Доход (общий)</span>
+          <span class="stat-box__value">{{ userStore.totalIncome }} IP / ч.</span>
+          <span class="stat-box__sub">Секторов: {{ userStore.ownedHexCount }}</span>
         </div>
       </div>
 
       <button 
-        class="collect-btn" 
+        class="settings-card__collect-btn" 
         :disabled="!canCollect" 
         @click="collectBonus"
       >
-        {{ canCollect ? 'СОБРАТЬ DAILY BONUS (+10 IP)' : 'БОНУС СОБРАН' }}
+        {{ canCollect ? 'СОБРАТЬ DAILY BONUS (+10 IP)' : 'DAILY BONUS СОБРАН' }}
       </button>
 
       <div class="settings-card__actions">
         <button 
-          class="btn btn--secondary" 
+          class="settings-btn settings-btn--secondary" 
           @click="handleClose"
         >
           Отмена
         </button>
         <button 
-          class="btn btn--primary" 
+          class="settings-btn settings-btn--primary" 
           :disabled="!hasChanges"
           @click="saveChanges"
         >
@@ -165,13 +162,13 @@ const collectBonus = async () => {
 
 <style lang="scss" scoped>
 .settings-card {
-  background: #1a1a1e;
-  border: 1px solid #333;
+  background: $color-card-bg-light;
+  border: 1px solid $color-gray-medium;
   border-radius: 16px;
   padding: 24px;
   width: 100%;
   max-width: 400px;
-  color: #fff;
+  color: $color-white;
 
   &__header {
     display: flex;
@@ -184,18 +181,61 @@ const collectBonus = async () => {
     font-size: 1.2rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #3b82f6;
+    color: $color-primary;
     margin: 0;
   }
 
   &__close {
     background: transparent;
     border: none;
-    color: #666;
+    color: $color-text-muted;
     font-size: 1.2rem;
     cursor: pointer;
     padding: 4px 8px;
-    &:hover { color: #fff; }
+    &:hover { color: $color-white; }
+  }
+
+  &__field {
+    margin-bottom: 20px;
+  }
+
+  &__label {
+    display: block;
+    font-size: 0.8rem;
+    color: $color-text-muted;
+    margin-bottom: 8px;
+  }
+
+  &__input {
+    width: 100%;
+    background: $color-bg;
+    border: 1px solid $color-gray-light;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: $color-white;
+    &:focus { border-color: $color-primary; outline: none; }
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 24px;
+    border-top: 1px solid $color-gray-medium;
+    padding-top: 24px;
+  }
+
+  &__collect-btn {
+    width: 100%;
+    padding: 12px;
+    background: $color-success;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    &:disabled { background: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
   }
 
   &__actions {
@@ -204,86 +244,45 @@ const collectBonus = async () => {
     margin-top: 20px;
   }
 
-  .field {
-    margin-bottom: 20px;
-    
-    label {
-      display: block;
-      font-size: 0.8rem;
-      color: #888;
-      margin-bottom: 8px;
-    }
-
-    &__input {
-      width: 100%;
-      background: #000;
-      border: 1px solid #444;
-      padding: 10px 12px;
-      border-radius: 8px;
-      color: #fff;
-      &:focus { border-color: #3b82f6; outline: none; }
-    }
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 24px;
-    border-top: 1px solid #333;
-    padding-top: 24px;
-  }
-
-  .stat-box {
-    background: #000;
-    padding: 12px;
-    border-radius: 10px;
+  &__loader {
     text-align: center;
-    &__label { font-size: 0.7rem; color: #666; display: block; }
-    &__value { font-size: 1rem; font-weight: bold; color: #10b981; }
+    color: $color-text-muted;
+    padding: 20px;
   }
 }
 
-.btn {
+.stat-box {
+  background: $color-bg;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+
+  &__label { font-size: 0.7rem; color: $color-text-muted; display: block; }
+  &__value { font-size: 1rem; font-weight: bold; color: $color-success; }
+  &__sub { font-size: 0.6rem; color: $color-gray-light; display: block; margin-top: 4px; }
+}
+
+.settings-btn {
   flex: 1;
   padding: 12px;
   border: none;
   border-radius: 8px;
   font-weight: bold;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 
   &--primary {
-    background: #3b82f6;
-    color: white;
+    background: $color-primary;
+    color: #000;
     &:disabled { opacity: 0.4; cursor: not-allowed; }
-    &:not(:disabled):hover { background: #2563eb; }
+    &:not(:disabled):hover { filter: brightness(1.2); }
   }
 
   &--secondary {
     background: transparent;
-    border: 1px solid #444;
-    color: #888;
-    &:hover { border-color: #666; color: #fff; }
+    border: 1px solid $color-gray-light;
+    color: $color-text-muted;
+    &:hover { border-color: $color-text-muted; color: $color-white; }
   }
-}
-
-.collect-btn {
-  width: 100%;
-  padding: 12px;
-  background: #10b981;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-  margin-top: 15px;
-  &:disabled { background: #333; cursor: not-allowed; }
-}
-
-.loader {
-  text-align: center;
-  color: #666;
-  padding: 20px;
 }
 </style>
