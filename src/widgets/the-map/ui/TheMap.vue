@@ -28,17 +28,18 @@ const selectedHexForModal = ref<string | null>(null);
 const terminalRef = ref<InstanceType<typeof TerminalLog> | null>(null);
 
 const zonesGeoJson = computed(() => ({
-  type: 'FeatureCollection',
+  type: 'FeatureCollection' as const,
   features: allZones.value.map(zone => ({
-    type: 'Feature',
+    type: 'Feature' as const,
     id: zone.id,
     geometry: {
-      type: 'Polygon',
+      type: 'Polygon' as const,
       coordinates: getHexBoundary(zone.id)
     },
     properties: {
       owner: zone.owner_id,
-      color: zone.profiles?.color || '#808080'
+      color: zone.profiles?.color || '#808080',
+      username: zone.profiles?.username || 'ANONYMOUS'
     }
   }))
 }));
@@ -102,7 +103,6 @@ const handleCapture = async () => {
     terminalRef.value?.addLog(`Sector ${currentHexId.value.substring(0, 8)}... localized.`, 'success');
     terminalRef.value?.addLog(`Domain override complete. Node secured.`, 'success');
 
-    console.log(`Sector ${currentHexId.value} captured successfully!`);
   } catch (error) {
     terminalRef.value?.addLog(`Breach failed: security protocol active.`, 'error');
     console.error('Failed to capture zone:', error);

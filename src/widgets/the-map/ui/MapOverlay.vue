@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import ColorPicker from '@/src/widgets/user-profile/ui/ColorPicker.vue';
-
 defineProps<{
   user: any;
   currentHexId: string | null;
@@ -8,15 +6,12 @@ defineProps<{
   captureLoading: boolean;
 }>();
 
-const emit = defineEmits(['colorUpdated', 'capture']);
+const emit = defineEmits(['capture']);
 
 const handleCapture = () => {
     emit('capture');
 };
 
-const onColorUpdated = () => {
-    emit('colorUpdated');
-};
 </script>
 
 <template>
@@ -31,8 +26,6 @@ const onColorUpdated = () => {
     </div>
 
     <div v-if="user" class="map-overlay__actions-panel">
-      <ColorPicker @colorChanged="onColorUpdated" />
-
       <button 
         v-if="currentHexId"
         class="map-overlay__capture-btn"

@@ -5,7 +5,7 @@ export const useZones = () => {
 const fetchZones = async () => {
   const { data, error } = await supabase
     .from('zones')
-    .select('id, owner_id, profiles(color)')
+    .select('id, owner_id, profiles(color, username)')
   
   if (data) {
     allZones.value = [...data] 
@@ -22,7 +22,18 @@ const fetchZones = async () => {
           schema: 'public', 
           table: 'zones' 
         }, 
-        (payload) => {
+        () => {
+          fetchZones();
+        }
+      )
+      .on(
+        'postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles' 
+        }, 
+        () => {
           fetchZones();
         }
       )

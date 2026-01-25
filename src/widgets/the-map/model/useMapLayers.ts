@@ -76,6 +76,26 @@ export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson:
         }
       });
     }
+
+    if (!map.value.getLayer('captured-names')) {
+      map.value.addLayer({
+        id: 'captured-names',
+        type: 'symbol',
+        source: 'captured-zones',
+        layout: {
+          'text-field': ['get', 'username'],
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+          'text-size': 12,
+          'text-anchor': 'center',
+          'text-allow-overlap': false
+        },
+        paint: {
+          'text-color': '#FFFFFF',
+          'text-halo-color': '#000000',
+          'text-halo-width': 1
+        }
+      });
+    }
   };
 
 
@@ -115,8 +135,6 @@ export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson:
       type: 'FeatureCollection',
       features: features
     } as any);
-  
-    // console.log(`[GRID DEBUG]: Zoom: ${zoom.toFixed(2)} | Visible: ${visibleHexIds.length} | Neutral: ${features.length}`);
   };
 
   return { initLayers, updateNeutralLayer, neutralHexGeoJson };
