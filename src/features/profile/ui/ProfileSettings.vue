@@ -77,14 +77,19 @@ const canCollect = computed(() => {
   return now - last > 24 * 60 * 60 * 1000
 })
 
+const nextCollectDate = computed(() => {
+  if (!userStore.profile?.last_daily_collect) return null
+  const last = new Date(userStore.profile.last_daily_collect).getTime()
+  return new Date(last + 24 * 60 * 60 * 1000).toLocaleString()
+})
+
 const collectBonus = async () => {
-  const { data } = await supabase.rpc('collect_daily_bonus', { 
+  const { data } = await (supabase.rpc as any)('collect_daily_bonus', { 
     user_id: user.value?.sub 
   })
   
   if (data?.success) {
     userStore.fetchProfile()
-    alert('Получено 10 IP!')
   } else {
     alert('Бонус еще не готов')
   }
@@ -140,6 +145,9 @@ const collectBonus = async () => {
       >
         {{ canCollect ? 'СОБРАТЬ DAILY BONUS (+10 IP)' : 'DAILY BONUS СОБРАН' }}
       </button>
+      <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
+        Следующий бонус: {{ nextCollectDate }}
+      </p>
 
       <div class="settings-card__actions">
         <button 
@@ -248,6 +256,13 @@ const collectBonus = async () => {
     text-align: center;
     color: $color-text-muted;
     padding: 20px;
+  }
+
+  &__bonus-info {
+    font-size: 0.7rem;
+    color: $color-text-muted;
+    text-align: center;
+    margin-top: 8px;
   }
 }
 

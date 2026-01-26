@@ -15,6 +15,7 @@ import { useZoneCapture } from '../model/useZoneCapture';
 import { useUserStore } from '@/src/stores/useUserStore';
 import { useZoneStore } from '@/src/stores/useZoneStore';
 import { COLORS } from '@/src/shared/config/colors';
+import { calculateLiveStorage } from '@/src/shared/lib/useEconomy';
 
 const { allZones, fetchZones, subscribeToZones } = useZones();
 const { captureHex, loading: captureLoading } = useCapture();
@@ -32,6 +33,20 @@ const showZoneModal = ref(false);
 const selectedHexForModal = ref<string | null>(null);
 const terminalRef = ref<InstanceType<typeof TerminalLog> | null>(null);
 
+// Тикер для живого обновления IP на карте
+const currentTime = ref(Date.now());
+let mapTicker: any = null;
+
+onMounted(() => {
+  mapTicker = setInterval(() => {
+    currentTime.value = Date.now();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (mapTicker) clearInterval(mapTicker);
+});
+
 const zonesGeoJson = computed(() => ({
   type: 'FeatureCollection' as const,
   features: allZones.value.map(zone => ({
@@ -46,10 +61,17 @@ const zonesGeoJson = computed(() => ({
       owner: zone.owner_id,
       color: zone.profiles?.color || COLORS.GRAY,
       username: zone.profiles?.username || 'ANONYMOUS',
-      storage: zone.storage || 0
+      storage: calculateLiveStorage(zone.storage || 0, zone.last_income_at, currentTime.value)
     }
   }))
 }));
+
+// Принудительно обновляем данные на карте при изменении GeoJSON (включая тики времени)
+watch(zonesGeoJson, (newGeoJson) => {
+  if (map.value && map.value.getSource('captured-zones')) {
+    (map.value.getSource('captured-zones') as mapboxgl.GeoJSONSource).setData(newGeoJson);
+  }
+}, { deep: true });
 
 const { initLayers, updateNeutralLayer, neutralHexGeoJson } = useMapLayers(map, zonesGeoJson);
 const { initCaptureLayer, startAnimation } = useZoneCapture(map);

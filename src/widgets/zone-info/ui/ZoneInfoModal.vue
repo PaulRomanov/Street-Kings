@@ -5,6 +5,7 @@ import { useZoneStore } from '@/src/stores/useZoneStore';
 import { useUserStore } from '@/src/stores/useUserStore';
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { calculateLiveStorage } from '@/src/shared/lib/useEconomy';
 
 const props = defineProps<{
   hexId: string | null;
@@ -39,22 +40,14 @@ const accumulatedStorage = computed(() => {
   const zone = allZones.value.find(z => z.id === props.hexId);
   if (!zone) return 0;
   
-  const baseStorage = zone.storage || 0;
-  if (!zone.last_income_at) return baseStorage;
-
-  const lastIncomeDate = new Date(zone.last_income_at).getTime();
-  const diffInHours = (currentTime.value - lastIncomeDate) / (1000 * 60 * 60);
-  const earned = diffInHours * 0.1;
-  
-  // Округляем до 2 знаков для визуальной чистоты
-  const total = Math.min(10, baseStorage + earned);
-  return Math.round(total * 100) / 100;
+  // Используем общую утилиту для расчета (с передачей currentTime для реактивности)
+  return calculateLiveStorage(zone.storage || 0, zone.last_income_at, currentTime.value);
 });
 
 const zoneInfo = computed(() => {
   if (!props.hexId) return null;
   const zone = allZones.value.find(z => z.id === props.hexId);
-  if (!zone) return { status: 'NEUTRAL', id: props.hexId };
+  if (!zone) return { status: 'NEUTRAL', id: props.hexId, storage: 0 };
 
   const isMe = String(zone.owner_id) === String(user.value?.sub);
   
