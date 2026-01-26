@@ -65,6 +65,8 @@ watch(() => user.value?.sub, (newId) => {
     if (!error && profile.value) {
       profile.value = { ...profile.value, ...updates }
     }
+
+    return error
   }
 
   const currentHexId = ref<string | null>(null)

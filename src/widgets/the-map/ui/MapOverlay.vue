@@ -9,12 +9,16 @@ defineProps<{
   captureLoading: boolean;
 }>();
 
-const emit = defineEmits(['capture']);
+const emit = defineEmits(['capture', 'center-me']);
 const { t } = useTranslation();
 
 const handleCapture = () => {
     emit('capture');
 };
+
+const handleCenterMe = () => {
+  emit('center-me');
+}
 </script>
 
 <template>
@@ -49,6 +53,11 @@ const handleCapture = () => {
           <span>{{ t('overlay_capture') }}</span>
         </template>
       </button>
+
+      <!-- Кнопка центрации -->
+      <button class="map-overlay__center-btn" @click="handleCenterMe" title="Find me">
+        🎯
+      </button>
     </div>
     
     <slot />
@@ -79,6 +88,33 @@ const handleCapture = () => {
     flex-direction: column;
     align-items: center;
     gap: 12px;
+  }
+
+  &__center-btn {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgba($color-black, 0.7);
+    border: 1px solid rgba($color-primary, 0.3);
+    color: $color-primary;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    pointer-events: auto;
+
+    &:hover {
+      border-color: $color-primary;
+      transform: scale(1.1);
+      background: rgba($color-black, 0.85);
+    }
   }
 
   &__sector-info {

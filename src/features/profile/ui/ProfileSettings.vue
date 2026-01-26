@@ -10,7 +10,7 @@ const user = useSupabaseUser()
 const userStore = useUserStore()
 const { t } = useTranslation()
 
-const activeTab = ref<'profile' | 'security'>('profile')
+const activeTab = ref<'profile' | 'security' | 'support'>('profile')
 const showRules = ref(false)
 
 // Данные профиля
@@ -23,6 +23,11 @@ const newEmail = ref('')
 const newPassword = ref('')
 const confirmNewPassword = ref('')
 const securityLoading = ref(false)
+
+// Поддержка
+const feedbackMessage = ref('')
+const feedbackType = ref<'bug' | 'suggestion'>('bug')
+const feedbackLoading = ref(false)
 
 const emit = defineEmits<{
   close: []
@@ -65,8 +70,36 @@ const saveChanges = async () => {
     updates.color = draftColor.value
   }
   
-  await userStore.updateProfile(updates)
-  emit('saved')
+  try {
+    const error = await userStore.updateProfile(updates)
+    // Ошибка 23505 = unique_violation (PostgreSQL)
+    if (error && (error as any).code === '23505') {
+      alert(t('profile_error_duplicate_name') || 'This name is already claimed by another king.')
+      return
+    }
+    emit('saved')
+  } catch (e: any) {
+    alert(e.message)
+  }
+}
+
+const sendFeedback = async () => {
+  if (!feedbackMessage.value) return
+  feedbackLoading.value = true
+  try {
+    const { error } = await supabase.from('feedback').insert({
+      user_id: user.value?.sub,
+      message: feedbackMessage.value,
+      type: feedbackType.value
+    })
+    if (error) throw error
+    alert(t('feedback_success') || 'Message sent to headquarters.')
+    feedbackMessage.value = ''
+  } catch (e: any) {
+    alert(e.message)
+  } finally {
+    feedbackLoading.value = false
+  }
 }
 
 const updateEmail = async () => {
@@ -169,6 +202,13 @@ const collectBonus = async () => {
         >
           {{ t('profile_tab_security') }}
         </button>
+        <button 
+          class="settings-tabs__item" 
+          :class="{ 'settings-tabs__item--active': activeTab === 'support' }"
+          @click="activeTab = 'support'"
+        >
+          {{ t('profile_tab_support') }}
+        </button>
       </div>
 
       <div v-if="!userStore.profile" class="settings-card__loader">
@@ -177,6 +217,7 @@ const collectBonus = async () => {
       
       <template v-else>
         <div v-if="activeTab === 'profile'" class="settings-card__content anim-slide-up">
+          <!-- ... existing profile content ... -->
           <div class="settings-card__field">
             <label class="settings-card__label">{{ t('profile_name_label') }}</label>
             <input 
@@ -230,7 +271,7 @@ const collectBonus = async () => {
           </div>
         </div>
 
-        <div v-else class="settings-card__content anim-slide-up">
+        <div v-else-if="activeTab === 'security'" class="settings-card__content anim-slide-up">
           <div class="settings-card__section-title">{{ t('profile_sec_email_title') }}</div>
           <div class="settings-card__field">
             <label class="settings-card__label">{{ t('profile_sec_email_label') }}</label>
@@ -277,6 +318,45 @@ const collectBonus = async () => {
               {{ t('profile_sec_pass_btn') }}
             </button>
           </div>
+        </div>
+
+        <div v-else class="settings-card__content anim-slide-up">
+          <div class="settings-card__section-title">{{ t('profile_tab_support') }}</div>
+          <p class="settings-card__description">{{ t('feedback_label') }}</p>
+          
+          <div class="settings-tabs settings-tabs--mini">
+            <button 
+              class="settings-tabs__item" 
+              :class="{ 'settings-tabs__item--active': feedbackType === 'bug' }"
+              @click="feedbackType = 'bug'"
+            >
+              {{ t('feedback_type_bug') }}
+            </button>
+            <button 
+              class="settings-tabs__item" 
+              :class="{ 'settings-tabs__item--active': feedbackType === 'suggestion' }"
+              @click="feedbackType = 'suggestion'"
+            >
+              {{ t('feedback_type_suggestion') }}
+            </button>
+          </div>
+
+          <div class="settings-card__field">
+            <textarea 
+              v-model="feedbackMessage" 
+              :placeholder="t('feedback_placeholder')"
+              class="settings-card__textarea"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <button 
+            class="settings-btn settings-btn--primary" 
+            :disabled="!feedbackMessage || feedbackLoading"
+            @click="sendFeedback"
+          >
+            {{ feedbackLoading ? '...' : t('feedback_btn') }}
+          </button>
         </div>
       </template>
     </div>
@@ -424,6 +504,25 @@ const collectBonus = async () => {
     text-transform: uppercase;
     letter-spacing: 1px;
   }
+
+  &__description {
+    font-size: 0.8rem;
+    color: $color-text-muted;
+    margin-bottom: 20px;
+  }
+
+  &__textarea {
+    width: 100%;
+    background: $color-bg;
+    border: 1px solid $color-gray-light;
+    padding: 12px;
+    border-radius: 8px;
+    color: $color-white;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: none;
+    &:focus { border-color: $color-primary; outline: none; }
+  }
 }
 
 .settings-tabs {
@@ -432,6 +531,15 @@ const collectBonus = async () => {
   padding: 4px;
   border-radius: 10px;
   margin-bottom: 25px;
+
+  &--mini {
+    margin-bottom: 20px;
+    border-radius: 6px;
+    .settings-tabs__item {
+      padding: 6px;
+      font-size: 0.7rem;
+    }
+  }
 
   &__item {
     flex: 1;

@@ -174,6 +174,19 @@ watch(user, (val) => {
   }
 });
 
+const isFirstFly = ref(true);
+
+const centerOnUser = () => {
+  if (!coords.value || !map.value) return;
+  map.value.flyTo({
+    center: [coords.value.lng, coords.value.lat],
+    speed: 1.2,
+    zoom: 16,
+    curve: 1.4,
+    essential: true
+  });
+};
+
 watch(coords, (newCoords) => {
   if (!newCoords || !map.value) return;
 
@@ -187,12 +200,11 @@ watch(coords, (newCoords) => {
     userMarker.value.setLngLat([newCoords.lng, newCoords.lat]);
   }
 
-  map.value.flyTo({
-    center: [newCoords.lng, newCoords.lat],
-    speed: 0.5,
-    curve: 1,
-    essential: true
-  });
+  // Только первый раз летим принудительно
+  if (isFirstFly.value) {
+    centerOnUser();
+    isFirstFly.value = false;
+  }
 });
 
 watch(() => userStore.currentHexId, (newHexId) => {
@@ -296,6 +308,7 @@ onUnmounted(() => {
         :captureLoading="captureLoading"
         @colorUpdated="onColorUpdated"
         @capture="handleCapture"
+        @centerMe="centerOnUser"
       >
         <slot />
       </MapOverlay>
