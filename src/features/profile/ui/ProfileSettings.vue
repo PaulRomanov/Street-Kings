@@ -7,9 +7,18 @@ const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userStore = useUserStore()
 
+const activeTab = ref<'profile' | 'security'>('profile')
+
+// Данные профиля
 const draftUsername = ref('')
 const draftColor = ref('')
 const colorPalette = COLORS.PLAYER_PALETTE
+
+// Данные безопасности
+const newEmail = ref('')
+const newPassword = ref('')
+const confirmNewPassword = ref('')
+const securityLoading = ref(false)
 
 const emit = defineEmits<{
   close: []
@@ -54,6 +63,42 @@ const saveChanges = async () => {
   
   await userStore.updateProfile(updates)
   emit('saved')
+}
+
+const updateEmail = async () => {
+  if (!newEmail.value) return
+  securityLoading.value = true
+  try {
+    const { error } = await supabase.auth.updateUser({ email: newEmail.value })
+    if (error) throw error
+    alert('Инструкции по подтверждению отправлены на оба адреса (старый и новый).')
+    newEmail.value = ''
+  } catch (e: any) {
+    alert(e.message)
+  } finally {
+    securityLoading.value = false
+  }
+}
+
+const updatePassword = async () => {
+  if (!newPassword.value) return
+  if (newPassword.value !== confirmNewPassword.value) {
+    alert('Пароли не совпадают')
+    return
+  }
+  
+  securityLoading.value = true
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPassword.value })
+    if (error) throw error
+    alert('Пароль успешно изменен!')
+    newPassword.value = ''
+    confirmNewPassword.value = ''
+  } catch (e: any) {
+    alert(e.message)
+  } finally {
+    securityLoading.value = false
+  }
 }
 
 const handleClose = () => {
@@ -103,66 +148,124 @@ const collectBonus = async () => {
       <button class="settings-card__close" @click="handleClose">✕</button>
     </div>
 
+    <!-- Табы -->
+    <div class="settings-tabs">
+      <button 
+        class="settings-tabs__item" 
+        :class="{ 'settings-tabs__item--active': activeTab === 'profile' }"
+        @click="activeTab = 'profile'"
+      >
+        ПРОФИЛЬ
+      </button>
+      <button 
+        class="settings-tabs__item" 
+        :class="{ 'settings-tabs__item--active': activeTab === 'security' }"
+        @click="activeTab = 'security'"
+      >
+        БЕЗОПАСНОСТЬ
+      </button>
+    </div>
+
     <div v-if="!userStore.profile" class="settings-card__loader">
       Загрузка данных...
     </div>
     
     <template v-else>
-      <div class="settings-card__field">
-        <label class="settings-card__label">Твой позывной (Street Name)</label>
-        <input 
-          v-model="draftUsername" 
-          type="text" 
-          maxlength="15" 
-          placeholder="Введите ник..."
-          class="settings-card__input"
+      <div v-if="activeTab === 'profile'" class="settings-card__content anim-slide-up">
+        <div class="settings-card__field">
+          <label class="settings-card__label">Твой позывной (Street Name)</label>
+          <input 
+            v-model="draftUsername" 
+            type="text" 
+            maxlength="15" 
+            placeholder="Введите ник..."
+            class="settings-card__input"
+          />
+        </div>
+
+        <ColorPicker 
+          :colors="colorPalette" 
+          :active-color="draftColor"
+          label="Цвет твоих территорий"
+          @select="selectColor"
         />
+
+        <div class="settings-card__stats">
+          <div class="stat-box">
+            <span class="stat-box__label">Баланс</span>
+            <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-box__label">Доход (общий)</span>
+            <span class="stat-box__value">{{ userStore.totalIncome }} IP / ч.</span>
+            <span class="stat-box__sub">Секторов: {{ userStore.ownedHexCount }}</span>
+          </div>
+        </div>
+
+        <button 
+          class="settings-card__collect-btn" 
+          :disabled="!canCollect" 
+          @click="collectBonus"
+        >
+          {{ canCollect ? 'СОБРАТЬ DAILY BONUS (+10 IP)' : 'DAILY BONUS СОБРАН' }}
+        </button>
+        <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
+          Следующий бонус: {{ nextCollectDate }}
+        </p>
+
+        <div class="settings-card__actions">
+          <button class="settings-btn settings-btn--secondary" @click="handleClose">Отмена</button>
+          <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">Сохранить</button>
+        </div>
       </div>
 
-      <ColorPicker 
-        :colors="colorPalette" 
-        :active-color="draftColor"
-        label="Цвет твоих территорий"
-        @select="selectColor"
-      />
-
-      <div class="settings-card__stats">
-        <div class="stat-box">
-          <span class="stat-box__label">Баланс</span>
-          <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
+      <div v-else class="settings-card__content anim-slide-up">
+        <div class="settings-card__section-title">Смена почты</div>
+        <div class="settings-card__field">
+          <label class="settings-card__label">Новый Email (потребуется подтверждение)</label>
+          <input 
+            v-model="newEmail" 
+            type="email" 
+            placeholder="new-email@example.com"
+            class="settings-card__input"
+          />
+          <button 
+            class="settings-btn settings-btn--primary settings-btn--small" 
+            :disabled="!newEmail || securityLoading"
+            @click="updateEmail"
+          >
+            ОБНОВИТЬ ПОЧТУ
+          </button>
         </div>
-        <div class="stat-box">
-          <span class="stat-box__label">Доход (общий)</span>
-          <span class="stat-box__value">{{ userStore.totalIncome }} IP / ч.</span>
-          <span class="stat-box__sub">Секторов: {{ userStore.ownedHexCount }}</span>
+
+        <div class="settings-card__divider"></div>
+
+        <div class="settings-card__section-title">Смена пароля</div>
+        <div class="settings-card__field">
+          <label class="settings-card__label">Новый пароль</label>
+          <input 
+            v-model="newPassword" 
+            type="password" 
+            placeholder="********"
+            class="settings-card__input"
+          />
         </div>
-      </div>
-
-      <button 
-        class="settings-card__collect-btn" 
-        :disabled="!canCollect" 
-        @click="collectBonus"
-      >
-        {{ canCollect ? 'СОБРАТЬ DAILY BONUS (+10 IP)' : 'DAILY BONUS СОБРАН' }}
-      </button>
-      <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
-        Следующий бонус: {{ nextCollectDate }}
-      </p>
-
-      <div class="settings-card__actions">
-        <button 
-          class="settings-btn settings-btn--secondary" 
-          @click="handleClose"
-        >
-          Отмена
-        </button>
-        <button 
-          class="settings-btn settings-btn--primary" 
-          :disabled="!hasChanges"
-          @click="saveChanges"
-        >
-          Сохранить
-        </button>
+        <div class="settings-card__field">
+          <label class="settings-card__label">Подтвердите новый пароль</label>
+          <input 
+            v-model="confirmNewPassword" 
+            type="password" 
+            placeholder="********"
+            class="settings-card__input"
+          />
+          <button 
+            class="settings-btn settings-btn--primary settings-btn--small" 
+            :disabled="!newPassword || securityLoading"
+            @click="updatePassword"
+          >
+            СМЕНИТЬ ПАРОЛЬ
+          </button>
+        </div>
       </div>
     </template>
   </div>
@@ -177,16 +280,17 @@ const collectBonus = async () => {
   width: 100%;
   max-width: 400px;
   color: $color-white;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 
   &__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
   &__title {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: $color-primary;
@@ -205,23 +309,43 @@ const collectBonus = async () => {
 
   &__field {
     margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   &__label {
     display: block;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: $color-text-muted;
-    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   &__input {
     width: 100%;
     background: $color-bg;
     border: 1px solid $color-gray-light;
-    padding: 10px 12px;
+    padding: 12px;
     border-radius: 8px;
     color: $color-white;
+    font-size: 0.9rem;
     &:focus { border-color: $color-primary; outline: none; }
+  }
+
+  &__section-title {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: $color-primary;
+    margin: 15px 0 15px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  &__divider {
+    height: 1px;
+    background: $color-gray-medium;
+    margin: 25px 0;
   }
 
   &__stats {
@@ -249,7 +373,7 @@ const collectBonus = async () => {
   &__actions {
     display: flex;
     gap: 12px;
-    margin-top: 20px;
+    margin-top: 25px;
   }
 
   &__loader {
@@ -263,6 +387,37 @@ const collectBonus = async () => {
     color: $color-text-muted;
     text-align: center;
     margin-top: 8px;
+  }
+}
+
+.settings-tabs {
+  display: flex;
+  background: $color-bg;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 25px;
+
+  &__item {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    background: transparent;
+    color: $color-text-muted;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+
+    &--active {
+      background: $color-card-bg-light;
+      color: $color-primary;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    &:hover:not(.settings-tabs__item--active) {
+      color: $color-white;
+    }
   }
 }
 
@@ -285,6 +440,7 @@ const collectBonus = async () => {
   font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
+  font-family: inherit;
 
   &--primary {
     background: $color-primary;
@@ -299,5 +455,22 @@ const collectBonus = async () => {
     color: $color-text-muted;
     &:hover { border-color: $color-text-muted; color: $color-white; }
   }
+
+  &--small {
+    padding: 8px 12px;
+    font-size: 0.7rem;
+    margin-top: 10px;
+    width: fit-content;
+    align-self: flex-end;
+  }
+}
+
+.anim-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

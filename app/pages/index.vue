@@ -12,6 +12,11 @@ const toggleProfile = () => {
   isProfileOpen.value = !isProfileOpen.value
 }
 
+const handleLogout = async () => {
+  const supabase = useSupabaseClient()
+  await supabase.auth.signOut()
+}
+
 </script>
 
 <template>
@@ -21,9 +26,14 @@ const toggleProfile = () => {
         <div class="game-page__ui">
           <div class="game-page__header">
             <h1 class="game-page__title">STREET KINGS</h1>
-            <button class="game-page__profile-toggle" @click="toggleProfile">
-              ЛИЧНЫЙ КАБИНЕТ
-            </button>
+            <div class="game-page__header-actions">
+              <button class="game-page__profile-toggle" @click="toggleProfile">
+                ЛИЧНЫЙ КАБИНЕТ
+              </button>
+              <button class="game-page__logout-btn" @click="handleLogout">
+                LOGOUT
+              </button>
+            </div>
           </div>
 
           <div class="game-page__status-bar">
@@ -88,6 +98,11 @@ const toggleProfile = () => {
     pointer-events: auto; 
   }
 
+  &__header-actions {
+    display: flex;
+    gap: 10px;
+  }
+
   &__title {
     color: $color-primary;
     text-shadow: 0 0 10px rgba($color-primary, 0.5);
@@ -122,6 +137,19 @@ const toggleProfile = () => {
     white-space: nowrap;
     transition: all 0.2s;
     &:hover { background: $color-primary; color: $color-black; }
+  }
+
+  &__logout-btn {
+    background: rgba($color-black, 0.7);
+    border: 1px solid $color-error;
+    color: $color-white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    white-space: nowrap;
+    transition: all 0.2s;
+    &:hover { background: $color-error; color: $color-white; }
   }
 
   &__auth {
