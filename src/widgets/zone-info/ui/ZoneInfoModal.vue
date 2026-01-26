@@ -3,6 +3,7 @@ import { useZones } from '@/src/entities/zone/model/useZones';
 import { useHexgrid } from '@/src/shared/lib/useHexgrid';
 import { useZoneStore } from '@/src/stores/useZoneStore';
 import { useUserStore } from '@/src/stores/useUserStore';
+import { useChatStore } from '@/src/stores/useChatStore';
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { calculateLiveStorage } from '@/src/shared/lib/useEconomy';
@@ -18,6 +19,7 @@ const emit = defineEmits(['close']);
 const { fetchZones } = useZones();
 const zoneStore = useZoneStore();
 const userStore = useUserStore();
+const chatStore = useChatStore();
 const { t } = useTranslation();
 const { allZones } = storeToRefs(zoneStore);
 const { getHexBoundary } = useHexgrid();
@@ -36,6 +38,16 @@ onMounted(() => {
 onUnmounted(() => {
   if (tickerInterval) clearInterval(tickerInterval);
 });
+
+const startPrivateChat = () => {
+  console.log('Initiating private chat with:', zoneInfo.value?.owner_id);
+  if (zoneInfo.value?.owner_id && zoneInfo.value?.username) {
+    chatStore.openChatWithUser(zoneInfo.value.owner_id, zoneInfo.value.username);
+    emit('close');
+  } else {
+    console.warn('Missing owner data for chat:', zoneInfo.value);
+  }
+};
 
 // Расчет накопленных IP в реальном времени (лимит 10, формат X.XX)
 const accumulatedStorage = computed(() => {
@@ -171,6 +183,15 @@ const closeModal = () => {
               {{ accumulatedStorage >= 10 ? t('zone_limit_warning') : t('zone_btn_fortify') }}
             </button>
           </div>
+
+          <div v-else class="zone-modal__actions">
+             <button 
+              class="zone-action-btn zone-action-btn--message" 
+              @click="startPrivateChat"
+            >
+              💬 {{ t('chat_send_private' as any) }}
+            </button>
+          </div>
         </template>
 
         <div v-else class="zone-modal__empty">
@@ -302,6 +323,13 @@ const closeModal = () => {
     border: 1px solid $color-primary;
     color: $color-primary;
     &:disabled { border-color: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
+  }
+
+  &--message {
+    background: rgba($color-primary, 0.15);
+    border: 1px solid $color-primary;
+    color: $color-primary;
+    &:hover { background: $color-primary; color: #000; }
   }
 }
 

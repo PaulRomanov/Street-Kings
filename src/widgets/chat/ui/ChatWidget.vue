@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useUserStore } from '@/src/stores/useUserStore'
+import { useChatStore } from '@/src/stores/useChatStore'
 import { useTranslation } from '@/src/shared/lib/useTranslation'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
@@ -16,18 +17,18 @@ interface Message {
 
 const supabase = useSupabaseClient()
 const userStore = useUserStore()
+const chatStore = useChatStore()
 const { t } = useTranslation()
 
 const messages = ref<Message[]>([])
+const privateMessages = ref<any[]>([])
 const newMessage = ref('')
 const chatContainer = ref<HTMLElement | null>(null)
-const isOpen = ref(false)
 const isLoading = ref(true)
 
-// Загрузка последних сообщений
+// Загрузка последних сообщений (Глобальные)
 const fetchMessages = async () => {
-  const { data, error } = await supabase
-    .from('messages')
+  const { data, error } = await (supabase.from('messages') as any)
     .select('*, profiles(username, color)')
     .order('created_at', { ascending: false })
     .limit(50)
@@ -39,53 +40,74 @@ const fetchMessages = async () => {
   isLoading.value = false
 }
 
+// Загрузка личных сообщений
+const fetchPrivateMessages = async () => {
+  if (!userStore.profile?.id) return
+  const { data, error } = await (supabase.from('private_messages') as any)
+    .select('*, sender:profiles!private_messages_sender_id_fkey(username, color), recipient:profiles!private_messages_recipient_id_fkey(username, color)')
+    .or(`sender_id.eq.${userStore.profile.id},recipient_id.eq.${userStore.profile.id}`)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (!error && data) {
+    privateMessages.value = data.reverse()
+  }
+}
+
 // Отправка сообщения
 const sendMessage = async () => {
   if (!newMessage.value.trim() || !userStore.profile?.id) return
 
   const content = newMessage.value.trim()
-  newMessage.value = ''
-
-  const { error } = await supabase
-    .from('messages')
-    .insert({
+  
+  if (chatStore.activeTab === 'global') {
+    newMessage.value = ''
+    const { error } = await (supabase.from('messages') as any).insert({
       profile_id: userStore.profile.id,
       content: content
     })
-
-  if (error) {
-    console.error('Chat error:', error.message)
-    // Возвращаем текст если не ушло
-    newMessage.value = content
+    if (error) newMessage.value = content
+  } else if (chatStore.activeRecipientId) {
+    newMessage.value = ''
+    const { error } = await (supabase.from('private_messages') as any).insert({
+      sender_id: userStore.profile.id,
+      recipient_id: chatStore.activeRecipientId,
+      content: content
+    })
+    if (error) {
+       console.error(error)
+       newMessage.value = content
+    }
+  } else {
+    alert('Select a recipient from the map or chat first.')
   }
 }
 
-// Подписка на Realtime
-let channel: any = null
+// Подписки на Realtime
+let globalChannel: any = null
+let privateChannel: any = null
 
 const subscribeChat = () => {
-  channel = supabase.channel('global-chat')
-    .on('postgres_changes', { 
-      event: 'INSERT', 
-      schema: 'public', 
-      table: 'messages' 
-    }, async (payload) => {
-      // Подгружаем инфо о профиле для нового сообщения
-      const { data } = await supabase
-        .from('profiles')
-        .select('username, color')
-        .eq('id', payload.new.profile_id)
-        .single()
-      
-      const fullMessage = { 
-        ...payload.new, 
-        profiles: data 
-      } as Message
-      
-      messages.value.push(fullMessage)
+  globalChannel = supabase.channel('global-chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+      const { data } = await (supabase.from('profiles') as any).select('username, color').eq('id', payload.new.profile_id).single()
+      const fullMessage = { ...payload.new, profiles: data }
+      messages.value.push(fullMessage as any)
       if (messages.value.length > 100) messages.value.shift()
-      
-      nextTick(() => scrollToBottom())
+      if (chatStore.activeTab === 'global') nextTick(() => scrollToBottom())
+    })
+    .subscribe()
+
+  privateChannel = supabase.channel('private-chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'private_messages' }, async (payload) => {
+      if (payload.new.sender_id === userStore.profile?.id || payload.new.recipient_id === userStore.profile?.id) {
+        const { data: sender } = await (supabase.from('profiles') as any).select('username, color').eq('id', payload.new.sender_id).single()
+        const { data: recipient } = await (supabase.from('profiles') as any).select('username, color').eq('id', payload.new.recipient_id).single()
+        
+        const fullMsg = { ...payload.new, sender, recipient }
+        privateMessages.value.push(fullMsg)
+        if (chatStore.activeTab === 'private') nextTick(() => scrollToBottom())
+      }
     })
     .subscribe()
 }
@@ -97,11 +119,24 @@ const scrollToBottom = () => {
 }
 
 const toggleChat = () => {
-  isOpen.value = !isOpen.value
-  if (isOpen.value) {
+  if (chatStore.isOpen) {
+    chatStore.closeChat()
+  } else {
+    chatStore.isOpen = true
+    fetchMessages()
+    fetchPrivateMessages()
     nextTick(() => scrollToBottom())
   }
 }
+
+watch(() => chatStore.activeTab, (newTab) => {
+  if (newTab === 'private') {
+    fetchPrivateMessages()
+  } else {
+    fetchMessages()
+  }
+  nextTick(() => scrollToBottom())
+})
 
 onMounted(() => {
   fetchMessages()
@@ -109,53 +144,97 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (channel) supabase.removeChannel(channel)
+  if (globalChannel) supabase.removeChannel(globalChannel)
+  if (privateChannel) supabase.removeChannel(privateChannel)
 })
 </script>
 
 <template>
-  <div class="chat-widget" :class="{ 'chat-widget--open': isOpen }">
+  <div class="chat-widget" :class="{ 'chat-widget--open': chatStore.isOpen }">
     <!-- Кнопка открытия -->
     <button class="chat-toggle" @click="toggleChat">
       <span class="chat-toggle__icon">💬</span>
-      <span v-if="!isOpen" class="chat-toggle__label">CHAT</span>
+      <span v-if="!chatStore.isOpen" class="chat-toggle__label">CHAT</span>
     </button>
 
     <!-- Окно чата -->
-    <div v-if="isOpen" class="chat-window anim-slide-up">
+    <div v-if="chatStore.isOpen" class="chat-window anim-slide-up">
       <div class="chat-window__header">
-        <span class="chat-window__title">GLOBAL BROADCAST</span>
-        <button class="chat-window__close" @click="isOpen = false">✕</button>
+        <div class="chat-tabs">
+          <button 
+            class="chat-tabs__item" 
+            :class="{ 'chat-tabs__item--active': chatStore.activeTab === 'global' }"
+            @click="chatStore.activeTab = 'global'"
+          >
+            {{ t('chat_tab_global' as any) }}
+          </button>
+          <button 
+            class="chat-tabs__item" 
+            :class="{ 'chat-tabs__item--active': chatStore.activeTab === 'private' }"
+            @click="chatStore.activeTab = 'private'"
+          >
+            {{ t('chat_tab_private' as any) }}
+          </button>
+        </div>
+        <button class="chat-window__close" @click="chatStore.closeChat()">✕</button>
       </div>
 
       <div ref="chatContainer" class="chat-window__messages" v-auto-animate>
-        <div v-if="isLoading" class="chat-loader">Connecting to frequency...</div>
+        <div v-if="isLoading" class="chat-loader">{{ t('chat_connecting' as any) }}</div>
         
-        <div 
-          v-for="msg in messages" 
-          :key="msg.id" 
-          class="chat-msg"
-          :class="{ 'chat-msg--mine': msg.profile_id === userStore.profile?.id }"
-        >
-          <div class="chat-msg__meta">
-            <span 
-              class="chat-msg__author" 
-              :style="{ color: msg.profiles?.color || '#fff' }"
-            >
-              {{ msg.profiles?.username || 'ANON' }}
-            </span>
-            <span class="chat-msg__time">{{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
+        <!-- Глобальный чат -->
+        <template v-if="chatStore.activeTab === 'global'">
+          <div 
+            v-for="msg in messages" 
+            :key="msg.id" 
+            class="chat-msg"
+            :class="{ 'chat-msg--mine': msg.profile_id === userStore.profile?.id }"
+          >
+            <div class="chat-msg__meta">
+              <span class="chat-msg__author" :style="{ color: msg.profiles?.color || '#fff' }">
+                {{ msg.profiles?.username || 'ANON' }}
+              </span>
+              <span class="chat-msg__time">{{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
+            </div>
+            <div class="chat-msg__content">{{ msg.content }}</div>
           </div>
-          <div class="chat-msg__content">{{ msg.content }}</div>
-        </div>
+        </template>
+
+        <!-- Личный чат -->
+        <template v-else>
+          <div v-if="chatStore.activeRecipientName" class="chat-active-recipient">
+            📟 {{ t('chat_private_with' as any) }}: <span>{{ chatStore.activeRecipientName }}</span>
+          </div>
+          <div v-if="privateMessages.length === 0" class="chat-empty">
+            {{ t('chat_no_messages' as any) }}
+          </div>
+          <div 
+            v-for="msg in privateMessages" 
+            :key="msg.id" 
+            class="chat-msg"
+            :class="{ 'chat-msg--mine': msg.sender_id === userStore.profile?.id }"
+          >
+            <div class="chat-msg__meta">
+              <span class="chat-msg__author" :style="{ color: (msg.sender_id === userStore.profile?.id ? msg.recipient?.color : msg.sender?.color) || '#fff' }">
+                {{ msg.sender_id === userStore.profile?.id ? 'TO: ' + (msg.recipient?.username || '...') : (msg.sender?.username || '...') }}
+              </span>
+              <span class="chat-msg__time">{{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
+            </div>
+            <div class="chat-msg__content">{{ msg.content }}</div>
+          </div>
+        </template>
       </div>
 
-      <form class="chat-window__input-area" @submit.prevent="sendMessage">
+      <form 
+        v-if="chatStore.activeTab === 'global' || chatStore.activeRecipientId" 
+        class="chat-window__input-area" 
+        @submit.prevent="sendMessage"
+      >
         <input 
           v-model="newMessage" 
           type="text" 
           maxlength="200"
-          placeholder="Transmit message..."
+          :placeholder="t('chat_input_placeholder' as any)"
           class="chat-input"
         />
         <button type="submit" class="chat-send-btn" :disabled="!newMessage.trim()">
@@ -237,24 +316,18 @@ onUnmounted(() => {
 
   &__header {
     background: rgba($color-primary, 0.1);
-    padding: 10px 15px;
+    padding: 8px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba($color-primary, 0.2);
   }
 
-  &__title {
-    font-size: 0.7rem;
-    font-weight: 900;
-    letter-spacing: 2px;
-    color: $color-primary;
-  }
-
   &__close {
     background: none;
     border: none;
     color: rgba($color-white, 0.4);
+    font-size: 1.1rem;
     cursor: pointer;
     &:hover { color: $color-white; }
   }
@@ -275,6 +348,55 @@ onUnmounted(() => {
     display: flex;
     gap: 8px;
     background: rgba($color-white, 0.05);
+  }
+}
+
+.chat-active-recipient {
+  padding: 8px 12px;
+  background: rgba($color-primary, 0.1);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: $color-text-muted;
+  margin-bottom: 5px;
+  span { color: $color-primary; font-weight: 900; }
+}
+
+.chat-empty {
+  text-align: center;
+  padding: 40px 0;
+  color: $color-text-muted;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.chat-tabs {
+  display: flex;
+  background: rgba(0,0,0,0.3);
+  padding: 2px;
+  border-radius: 6px;
+  gap: 2px;
+
+  &__item {
+    padding: 4px 12px;
+    border: none;
+    background: transparent;
+    color: rgba($color-white, 0.4);
+    font-size: 0.65rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+
+    &--active {
+      background: rgba($color-primary, 0.2);
+      color: $color-primary;
+    }
+
+    &:hover:not(.chat-tabs__item--active) {
+      color: $color-white;
+    }
   }
 }
 

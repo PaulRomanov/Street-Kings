@@ -94,6 +94,15 @@ const translations = {
     zone_empty: 'Sector is free for capture for 5.00 IP.',
     zone_anonymous: 'ANONYMOUS',
 
+    // Chat
+    chat_tab_global: 'Broadcast',
+    chat_tab_private: 'Private',
+    chat_send_private: 'Send Message',
+    chat_no_messages: 'No messages here yet...',
+    chat_private_with: 'Secure line with',
+    chat_input_placeholder: 'Transmit message...',
+    chat_connecting: 'Connecting to frequency...',
+
     // Map Overlay
     overlay_scanning: 'SCANNING...',
     overlay_secured: 'SECTOR SECURED',
@@ -197,6 +206,15 @@ const translations = {
     zone_empty: 'Сектор свободен для захвата за 5.00 IP.',
     zone_anonymous: 'АНОНИМ',
 
+    // Chat
+    chat_tab_global: 'Эфир',
+    chat_tab_private: 'Личные',
+    chat_send_private: 'Написать',
+    chat_no_messages: 'Здесь пока пусто...',
+    chat_private_with: 'Шифрованный канал с',
+    chat_input_placeholder: 'Передать сообщение...',
+    chat_connecting: 'Подключение к частоте...',
+
     // Map Overlay
     overlay_scanning: 'СКАНИРОВАНИЕ...',
     overlay_secured: 'СЕКТОР ЗАХВАЧЕН',
@@ -226,7 +244,8 @@ const translations = {
 
 export const useTranslation = () => {
   const t = (key: keyof typeof translations.en) => {
-    return translations[currentLang.value][key] || key;
+    const section = (translations as any)[currentLang.value]
+    return section[key] || key;
   };
 
   const setLanguage = (lang: Language) => {
