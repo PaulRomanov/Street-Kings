@@ -1,75 +1,37 @@
-# Nuxt Minimal Starter
+# 🏙️ STREET KINGS
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+**STREET KINGS** — это амбициозная MMO-стратегия в реальном времени, основанная на геолокации. Игроки захватывают реальные городские территории, расширяют сферы влияния и сражаются за звание "Короля улиц", используя интерактивную карту мира.
 
-## Setup
+🔗 **Демо проекта:** [https://street-kings.vercel.app/](https://street-kings.vercel.app/)
 
-Make sure to install dependencies:
+---
 
-```bash
-# npm
-npm install
+## 🚀 Особенности (Features)
 
-# pnpm
-pnpm install
+* **Real-time Map:** Полноэкранная интерактивная карта на базе Mapbox GL JS.
+* **Hexagonal Grid:** Уникальная система разбиения мира на игровые гексагоны (районы) с использованием осевых координат ($q$, $r$).
+* **Territory Capture:** Механика захвата территорий: окрашивай улицы города в свой цвет.
+* **Player Economy:** Накопление игровой валюты (IP — Influence Points) и пассивный доход с захваченных зон.
+* **Customization:** Личный кабинет с возможностью выбора позывного и цвета своей "банды".
+* **Daily Rewards:** Система ежедневных бонусов через RPC-функции базы данных.
 
-# yarn
-yarn install
+## 🛠 Технологический стек
 
-# bun
-bun install
-```
+* **Frontend:** [Nuxt 3/4](https://nuxt.com/) (Vue.js)
+* **State Management:** [Pinia](https://pinia.vuejs.org/)
+* **Backend & DB:** [Supabase](https://supabase.com/) (PostgreSQL + Realtime + RLS)
+* **Maps:** [Mapbox GL JS](https://www.mapbox.com/mapbox-gl-js)
+* **Styles:** SCSS (SASS) с использованием переменных и миксинов.
+* **Architecture:** [Feature-Sliced Design (FSD)](https://feature-sliced.design/)
 
-## Development Server
+---
 
-Start the development server on `http://localhost:3000`:
+## 📂 Структура проекта (FSD)
 
-```bash
-# npm
-npm run dev
+Проект построен по методологии **Feature-Sliced Design**, что обеспечивает масштабируемость и независимость модулей:
 
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+* `src/app` — Инициализация приложения, глобальные стили, плагины.
+* `src/pages` — Игровые экраны (Map Page, Auth).
+* `src/widgets` — Крупные блоки (интерактивная карта `TheMap`).
+* `src/features` — Пользовательские сценарии (авторизация, настройки профиля, сбор бонуса).
+* `src/shared` — API-клиенты, типы, константы и математические утилиты для гексагональной сетки.
