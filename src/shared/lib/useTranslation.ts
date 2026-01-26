@@ -112,6 +112,7 @@ const translations = {
     loading: 'Loading data...',
     error_harvest: 'Harvest error',
     error_fortify: 'Fortify error',
+    zone_proximity_error: 'You must be in this sector to capture or attack.',
 
     // Rules
     rules_title: 'STREET KINGS CODES',
@@ -224,6 +225,7 @@ const translations = {
     loading: 'Загрузка данных...',
     error_harvest: 'Ошибка сбора',
     error_fortify: 'Ошибка укрепления',
+    zone_proximity_error: 'Для захвата или атаки нужно находиться в этом секторе.',
 
     // Rules
     rules_title: 'КОДЕКС STREET KINGS',

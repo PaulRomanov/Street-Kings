@@ -105,8 +105,17 @@ const fortifyHex = async () => {
   }
 };
 
+const isPlayerOnHex = computed(() => {
+  return String(userStore.currentHexId) === String(props.hexId);
+});
+
 const handleCapture = async () => {
   if (!props.hexId) return;
+
+  if (!isPlayerOnHex.value) {
+    alert(t('zone_proximity_error'));
+    return;
+  }
   
   const { data, error } = await (supabase.rpc as any)('capture_hexagon', {
       target_hex_id: props.hexId
@@ -197,16 +206,32 @@ const closeModal = () => {
         <div v-else class="zone-modal__empty">
           <p>{{ t('zone_empty') }}</p>
           <div class="zone-modal__actions">
-            <button class="zone-action-btn zone-action-btn--harvest" @click="handleCapture">
+            <button 
+              class="zone-action-btn zone-action-btn--harvest" 
+              :disabled="!isPlayerOnHex"
+              @click="handleCapture"
+            >
               CAPTURE (5.00 IP)
             </button>
           </div>
+          <p v-if="!isPlayerOnHex" class="zone-modal__warning">
+            ⚠️ {{ t('zone_proximity_error') }}
+          </p>
         </div>
 
-        <div v-if="!zoneInfo.isMe && zoneInfo.owner_id" class="zone-modal__actions">
-          <button class="zone-action-btn zone-action-btn--fortify" @click="handleCapture">
-            ATTACK ({{ (10 + (zoneInfo.storage || 0)).toFixed(2) }} IP)
-          </button>
+        <div v-if="!zoneInfo.isMe && zoneInfo.owner_id" class="zone-modal__actions-stack">
+          <div class="zone-modal__actions">
+            <button 
+              class="zone-action-btn zone-action-btn--fortify" 
+              :disabled="!isPlayerOnHex"
+              @click="handleCapture"
+            >
+              ATTACK ({{ (10 + (zoneInfo.storage || 0)).toFixed(2) }} IP)
+            </button>
+          </div>
+          <p v-if="!isPlayerOnHex" class="zone-modal__warning">
+            ⚠️ {{ t('zone_proximity_error') }}
+          </p>
         </div>
       </div>
     </div>
@@ -282,6 +307,22 @@ const closeModal = () => {
     padding: 10px 0;
     font-size: 0.9rem;
     p { margin-bottom: 20px; }
+  }
+
+  &__warning {
+    color: $color-warning;
+    font-size: 0.75rem;
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.4;
+    font-weight: bold;
+    padding: 0 10px;
+  }
+
+  &__actions-stack {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
   }
 }
 
