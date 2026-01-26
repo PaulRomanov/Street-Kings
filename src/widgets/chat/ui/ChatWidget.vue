@@ -132,7 +132,12 @@ const subscribeChat = () => {
       const fullMessage = { ...payload.new, profiles: data }
       messages.value.push(fullMessage as any)
       if (messages.value.length > 100) messages.value.shift()
-      if (chatStore.activeTab === 'global') nextTick(() => scrollToBottom())
+      
+      if (!chatStore.isOpen || chatStore.activeTab !== 'global') {
+        chatStore.hasUnreadMessages = true
+      }
+      
+      if (chatStore.isOpen && chatStore.activeTab === 'global') nextTick(() => scrollToBottom())
     })
     .subscribe()
 
@@ -144,7 +149,12 @@ const subscribeChat = () => {
         
         const fullMsg = { ...payload.new, sender, recipient }
         privateMessages.value.push(fullMsg)
-        if (chatStore.activeTab === 'private') nextTick(() => scrollToBottom())
+
+        if (!chatStore.isOpen || chatStore.activeTab !== 'private' || chatStore.activeRecipientId !== (payload.new.sender_id === userStore.profile?.id ? payload.new.recipient_id : payload.new.sender_id)) {
+           chatStore.hasUnreadMessages = true
+        }
+
+        if (chatStore.isOpen && chatStore.activeTab === 'private') nextTick(() => scrollToBottom())
       }
     })
     .subscribe()
@@ -161,6 +171,7 @@ const toggleChat = () => {
     chatStore.closeChat()
   } else {
     chatStore.isOpen = true
+    chatStore.markAsRead()
     fetchMessages()
     fetchPrivateMessages()
     nextTick(() => scrollToBottom())
@@ -190,9 +201,14 @@ onUnmounted(() => {
 <template>
   <div class="chat-widget" :class="{ 'chat-widget--open': chatStore.isOpen }">
     <!-- Кнопка открытия -->
-    <button class="chat-toggle" @click="toggleChat">
+    <button 
+      class="chat-toggle" 
+      :class="{ 'chat-toggle--unread': chatStore.hasUnreadMessages }"
+      @click="toggleChat"
+    >
       <span class="chat-toggle__icon">💬</span>
       <span v-if="!chatStore.isOpen" class="chat-toggle__label">CHAT</span>
+      <span v-if="chatStore.hasUnreadMessages && !chatStore.isOpen" class="chat-toggle__badge"></span>
     </button>
 
     <!-- Окно чата -->
@@ -356,6 +372,11 @@ onUnmounted(() => {
     transform: scale(1.05);
   }
 
+  &--unread {
+    border-color: $color-error;
+    box-shadow: 0 0 15px rgba($color-error, 0.4);
+  }
+
   &__icon { font-size: 1.2rem; }
   
   &__label {
@@ -365,9 +386,27 @@ onUnmounted(() => {
     letter-spacing: 1px;
   }
 
+  &__badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background: $color-error;
+    border: 2px solid $color-black;
+    border-radius: 50%;
+    animation: badge-pulse 1.5s infinite;
+  }
+
   .chat-widget--open & {
     display: none;
   }
+}
+
+@keyframes badge-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .chat-window {
