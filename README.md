@@ -37,5 +37,9 @@
 * `src/shared` — API-клиенты, типы, константы и математические утилиты для гексагональной сетки.
 
   
-<img width="722" height="969" alt="Снимок экрана 2026-01-26 в 12 13 19" src="https://github.com/user-attachments/assets/cd1a03ec-085e-4a48-9afa-4b9174a056d7" />
+<img width="609" height="717" alt="Снимок экрана 2026-01-26 в 17 29 12" src="https://github.com/user-attachments/assets/c74c51e5-ec63-4d40-9660-b22aa6df6c2b" />
+
+<img width="406" height="968" alt="Снимок экрана 2026-01-26 в 17 32 25" src="https://github.com/user-attachments/assets/1b431107-4956-4124-8f28-676036b07078" />
+
+
 
