@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useTranslation } from '@/src/shared/lib/useTranslation'
+import GameRulesModal from '@/src/widgets/game-rules/ui/GameRulesModal.vue'
+
 const supabase = useSupabaseClient()
-const { t } = useTranslation()
+const { t, currentLang, setLanguage } = useTranslation()
+
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -9,9 +12,14 @@ const isRegister = ref(false)
 const isResetMode = ref(false)
 const loading = ref(false)
 const errorMsg = ref('')
+const showRules = ref(false)
 
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+
+const toggleLanguage = () => {
+  setLanguage(currentLang.value === 'en' ? 'ru' : 'en')
+}
 
 const handleAuth = async () => {
   loading.value = true
@@ -67,9 +75,14 @@ const toggleReset = () => {
     <h1 class="auth-brand">{{ t('brand_name') }}</h1>
     
     <div class="auth-form">
-      <h2 class="auth-form__title">
-        {{ isResetMode ? t('auth_title_reset') : (isRegister ? t('auth_title_register') : t('auth_title_login')) }}
-      </h2>
+      <div class="auth-form__header">
+        <h2 class="auth-form__title">
+          {{ isResetMode ? t('auth_title_reset') : (isRegister ? t('auth_title_register') : t('auth_title_login')) }}
+        </h2>
+        <button class="auth-form__lang" @click="toggleLanguage">
+          {{ currentLang.toUpperCase() }}
+        </button>
+      </div>
       
       <div class="auth-form__fields">
         <div class="auth-field">
@@ -124,8 +137,17 @@ const toggleReset = () => {
         <button @click="toggleReset" class="auth-nav-btn auth-nav-btn--muted">
           {{ isResetMode ? t('auth_nav_back') : t('auth_nav_forgot') }}
         </button>
+        
+        <div class="auth-form__rules-trigger">
+          <button class="rules-trigger-btn" @click="showRules = true">
+            📜 {{ t('rules_btn') }}
+          </button>
+        </div>
       </div>
     </div>
+
+    <!-- Модалка правил -->
+    <GameRulesModal :is-visible="showRules" @close="showRules = false" />
   </div>
 </template>
 
@@ -157,13 +179,34 @@ const toggleReset = () => {
   backdrop-filter: blur(10px);
   border-radius: 4px;
 
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    gap: 15px;
+  }
+
   &__title {
     color: $color-primary;
     font-size: 20px;
-    margin-bottom: 30px;
-    text-align: center;
+    margin: 0;
     letter-spacing: 2px;
     font-weight: bold;
+    text-align: left;
+  }
+
+  &__lang {
+    background: rgba($color-white, 0.05);
+    border: 1px solid rgba($color-primary, 0.3);
+    color: $color-primary;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    &:hover { background: rgba($color-primary, 0.1); border-color: $color-primary; }
   }
 
   &__fields {
@@ -210,8 +253,17 @@ const toggleReset = () => {
   &__navigation {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
+  }
+
+  &__rules-trigger {
+    margin-top: 10px;
+    padding-top: 15px;
+    border-top: 1px solid rgba($color-white, 0.1);
+    width: 100%;
+    display: flex;
+    justify-content: center;
   }
 }
 
@@ -271,6 +323,19 @@ const toggleReset = () => {
     font-size: 12px;
     color: $color-text-muted;
   }
+}
+
+.rules-trigger-btn {
+  background: transparent;
+  border: 1px solid rgba($color-primary, 0.3);
+  color: $color-primary;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: rgba($color-primary, 0.1); border-color: $color-primary; }
 }
 
 @media (max-width: 480px) {

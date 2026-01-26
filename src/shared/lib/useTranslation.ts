@@ -94,7 +94,22 @@ const translations = {
     // Common
     loading: 'Loading data...',
     error_harvest: 'Harvest error',
-    error_fortify: 'Fortify error'
+    error_fortify: 'Fortify error',
+
+    // Rules
+    rules_title: 'STREET KINGS CODES',
+    rules_btn: 'GAME RULES',
+    rules_close: 'GOT IT',
+    rules_intro_title: 'Welcome to the Streets',
+    rules_intro_text: 'Street Kings is a strategic territorial war game. Your goal is to dominate the city by capturing sectors.',
+    rules_ip_title: 'Intelligence Points (IP)',
+    rules_ip_text: 'IP is your main currency. Use it to capture and fortify sectors. IP accumulates automatically over time (0.1 IP/hour per sector).',
+    rules_capture_title: 'Capturing Sectors',
+    rules_capture_text: 'Free sectors cost 5.00 IP. Capturing occupied sectors costs 10.00 IP + whatever the previous owner stored there.',
+    rules_income_title: 'Income & Storage',
+    rules_income_text: 'Maximum storage is 10.00 IP per sector. If you don\'t harvest, growth stops at the limit!',
+    rules_bonus_title: 'Daily Bonus',
+    rules_bonus_text: 'Collect 10.00 IP every 24 hours in your Profile Settings to boost your expansion.'
   },
   ru: {
     // Auth
@@ -174,7 +189,22 @@ const translations = {
     // Common
     loading: 'Загрузка данных...',
     error_harvest: 'Ошибка сбора',
-    error_fortify: 'Ошибка укрепления'
+    error_fortify: 'Ошибка укрепления',
+
+    // Rules
+    rules_title: 'КОДЕКС STREET KINGS',
+    rules_btn: 'ПРАВИЛА ИГРЫ',
+    rules_close: 'ПОНЯТНО',
+    rules_intro_title: 'Добро пожаловать на улицы',
+    rules_intro_text: 'Street Kings — это стратегическая война за территории. Ваша цель — доминировать в городе, захватывая сектора.',
+    rules_ip_title: 'Intelligence Points (IP)',
+    rules_ip_text: 'IP — ваша основная валюта. Используйте её для захвата и укрепления секторов. IP накапливается автоматически (0.1 IP/час на сектор).',
+    rules_capture_title: 'Захват секторов',
+    rules_capture_text: 'Свободные сектора стоят 5.00 IP. Захват занятых секторов стоит 10.00 IP + всё, что предыдущий владелец накопил там.',
+    rules_income_title: 'Доход и Хранилище',
+    rules_income_text: 'Максимальная емкость — 10.00 IP на сектор. Если не собирать IP, рост остановится на этом лимите!',
+    rules_bonus_title: 'Ежедневный бонус',
+    rules_bonus_text: 'Забирайте 10.00 IP каждые 24 часа в Личном Кабинете для ускорения вашей экспансии.'
   }
 };
 

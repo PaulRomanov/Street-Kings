@@ -3,6 +3,7 @@ import { useUserStore } from '@/src/stores/useUserStore'
 import ColorPicker from '@/src/widgets/user-profile/ui/ColorPicker.vue'
 import { COLORS } from '@/src/shared/config/colors'
 import { useTranslation } from '@/src/shared/lib/useTranslation'
+import GameRulesModal from '@/src/widgets/game-rules/ui/GameRulesModal.vue'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
@@ -10,6 +11,7 @@ const userStore = useUserStore()
 const { t } = useTranslation()
 
 const activeTab = ref<'profile' | 'security'>('profile')
+const showRules = ref(false)
 
 // Данные профиля
 const draftUsername = ref('')
@@ -215,6 +217,12 @@ const collectBonus = async () => {
           {{ t('profile_bonus_next') }}: {{ nextCollectDate }}
         </p>
 
+        <div class="settings-card__rules">
+          <button class="rules-btn-mini" @click="showRules = true">
+            📜 {{ t('rules_btn') }}
+          </button>
+        </div>
+
         <div class="settings-card__actions">
           <button class="settings-btn settings-btn--secondary" @click="handleClose">{{ t('profile_btn_cancel') }}</button>
           <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
@@ -270,6 +278,9 @@ const collectBonus = async () => {
         </div>
       </div>
     </template>
+
+    <!-- Модалка правил -->
+    <GameRulesModal :is-visible="showRules" @close="showRules = false" />
   </div>
 </template>
 
@@ -283,6 +294,7 @@ const collectBonus = async () => {
   max-width: 400px;
   color: $color-white;
   box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  position: relative;
 
   &__header {
     display: flex;
@@ -335,15 +347,6 @@ const collectBonus = async () => {
     &:focus { border-color: $color-primary; outline: none; }
   }
 
-  &__section-title {
-    font-size: 0.9rem;
-    font-weight: bold;
-    color: $color-primary;
-    margin: 15px 0 15px 0;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
   &__divider {
     height: 1px;
     background: $color-gray-medium;
@@ -372,6 +375,12 @@ const collectBonus = async () => {
     &:disabled { background: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
   }
 
+  &__rules {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+  }
+
   &__actions {
     display: flex;
     gap: 12px;
@@ -389,6 +398,15 @@ const collectBonus = async () => {
     color: $color-text-muted;
     text-align: center;
     margin-top: 8px;
+  }
+
+  &__section-title {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: $color-primary;
+    margin: 15px 0 15px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 }
 
@@ -465,6 +483,19 @@ const collectBonus = async () => {
     width: fit-content;
     align-self: flex-end;
   }
+}
+
+.rules-btn-mini {
+  background: transparent;
+  border: 1px solid rgba($color-primary, 0.3);
+  color: $color-primary;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: rgba($color-primary, 0.1); border-color: $color-primary; }
 }
 
 .anim-slide-up {
