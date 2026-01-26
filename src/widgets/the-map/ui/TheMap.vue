@@ -292,6 +292,7 @@ onUnmounted(() => {
         :user="user"
         :currentHexId="userStore.currentHexId"
         :isZoneCapturedByMe="userStore.isZoneCapturedByMe"
+        :currentZoneOwner="userStore.currentZoneOwner"
         :captureLoading="captureLoading"
         @colorUpdated="onColorUpdated"
         @capture="handleCapture"

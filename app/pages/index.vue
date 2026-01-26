@@ -31,37 +31,23 @@ const handleLogout = async () => {
       <TheMap>
         <div class="game-page__ui">
           <div class="game-page__header">
-            <h1 class="game-page__title">{{ t('brand_name') }}</h1>
+            <div class="user-block" @click="toggleProfile">
+              <div class="user-block__avatar">
+                <span class="user-block__icon">👤</span>
+              </div>
+              <div class="user-block__info">
+                <span class="user-block__name">{{ userStore.profile?.username || 'STREET KING' }}</span>
+                <span class="user-block__balance">⚡ {{ userStore.profile?.balance?.toFixed(1) || 0 }} IP</span>
+              </div>
+            </div>
+
             <div class="game-page__header-actions">
-              <button class="game-page__lang-btn" @click="toggleLanguage">
+              <button class="lang-circle-btn" @click="toggleLanguage">
                 {{ currentLang.toUpperCase() }}
               </button>
-              <button class="game-page__profile-toggle" @click="toggleProfile">
-                {{ t('nav_profile') }}
+              <button class="logout-mini-btn" @click="handleLogout" :title="t('nav_logout')">
+                🚪
               </button>
-              <button class="game-page__logout-btn" @click="handleLogout">
-                {{ t('nav_logout') }}
-              </button>
-            </div>
-          </div>
-
-          <div class="game-page__status-bar">
-            <div class="game-page__status-item">
-              <span class="game-page__status-label">{{ t('status_sector') }}</span>
-              <span class="game-page__status-value">{{ userStore.currentHexId?.substring(0, 12) || t('status_scanning') }}</span>
-              <div v-if="userStore.currentHexId" class="game-page__status-tag" :class="{ 
-                'game-page__status-tag--owned': userStore.isZoneCapturedByMe,
-                'game-page__status-tag--enemy': userStore.currentZoneOwner && !userStore.isZoneCapturedByMe 
-              }">
-                {{ userStore.isZoneCapturedByMe ? t('status_secured') : (userStore.currentZoneOwner ? t('status_enemy') : t('status_neutral')) }}
-              </div>
-            </div>
-
-            <div class="game-page__status-item">
-              <span class="game-page__status-label">{{ t('status_balance') }}</span>
-              <div class="game-page__status-value game-page__status-value--success">
-                ⚡ {{ userStore.profile?.balance?.toFixed(1) || 0 }} IP
-              </div>
             </div>
           </div>
 
@@ -94,7 +80,7 @@ const handleLogout = async () => {
     width: 100%;
     height: 100%;
     pointer-events: none; 
-    padding: 20px;
+    padding: 15px;
     z-index: $z-ui;
     display: flex;
     flex-direction: column;
@@ -103,36 +89,15 @@ const handleLogout = async () => {
   &__header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     pointer-events: auto; 
     gap: 15px;
-
-    @media (max-width: 600px) {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 10px;
-    }
   }
 
   &__header-actions {
     display: flex;
+    align-items: center;
     gap: 10px;
-
-    @media (max-width: 600px) {
-      flex-direction: column;
-    }
-  }
-
-  &__title {
-    color: $color-primary;
-    text-shadow: 0 0 10px rgba($color-primary, 0.5);
-    font-weight: 900;
-    margin: 0;
-    white-space: nowrap;
-
-    @media (max-width: 600px) {
-      text-align: center;
-    }
   }
 
   &__settings-wrapper {
@@ -145,48 +110,10 @@ const handleLogout = async () => {
     align-items: center;
     justify-content: center;
     background: rgba($color-black, 0.5);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
     z-index: $z-modal;
     pointer-events: auto;
     padding: 20px;
-  }
-
-  &__lang-btn {
-    background: rgba($color-black, 0.7);
-    border: 1px solid $color-gray-light;
-    color: $color-primary;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.2s;
-    &:hover { border-color: $color-primary; }
-  }
-
-  &__profile-toggle {
-    background: rgba($color-black, 0.7);
-    border: 1px solid $color-primary;
-    color: $color-white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    white-space: nowrap;
-    transition: all 0.2s;
-    &:hover { background: $color-primary; color: $color-black; }
-  }
-
-  &__logout-btn {
-    background: rgba($color-black, 0.7);
-    border: 1px solid $color-error;
-    color: $color-white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    white-space: nowrap;
-    transition: all 0.2s;
-    &:hover { background: $color-error; color: $color-white; }
   }
 
   &__auth {
@@ -196,59 +123,93 @@ const handleLogout = async () => {
     align-items: center;
     justify-content: center;
     background: $color-bg;
-  }
-
-  &__status-bar {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-top: 12px;
-    pointer-events: none;
-  }
-
-  &__status-item {
-    background: rgba($color-black, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba($color-primary, 0.2);
-    padding: 8px 16px;
-    border-radius: 4px;
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    min-width: 120px;
-  }
-
-  &__status-label {
-    font-size: 8px;
-    color: rgba($color-text, 0.4);
-    letter-spacing: 1px;
-    font-weight: bold;
-    margin-bottom: 2px;
-  }
-
-  &__status-value {
-    font-family: monospace;
-    font-weight: bold;
-    font-size: 0.9rem;
-    color: $color-primary;
-
-    &--success { color: $color-success; }
-  }
-
-  &__status-tag {
-    font-size: 8px;
-    margin-top: 4px;
-    color: $color-text-muted;
-    &--owned { color: $color-success; }
-    &--enemy { color: $color-error; }
+    padding: 20px;
   }
 }
 
-@media (max-width: 470px) {
-  .game-page {
-    &__title { font-size: 1.2rem; }
-    &__profile-toggle { padding: 6px 12px; font-size: 0.8rem; }
+.user-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba($color-black, 0.7);
+  padding: 8px 16px 8px 8px;
+  border-radius: 50px;
+  border: 1px solid rgba($color-primary, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+
+  &:hover {
+    border-color: $color-primary;
+    transform: translateY(-1px);
+    background: rgba($color-black, 0.85);
   }
+
+  &__avatar {
+    width: 36px;
+    height: 36px;
+    background: $color-primary;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__icon {
+    font-size: 1.2rem;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__name {
+    color: $color-white;
+    font-weight: 900;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+  }
+
+  &__balance {
+    color: $color-primary;
+    font-weight: bold;
+    font-size: 0.75rem;
+  }
+}
+
+.lang-circle-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba($color-black, 0.7);
+  border: 1px solid rgba($color-white, 0.2);
+  color: $color-primary;
+  font-weight: 900;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  &:hover { border-color: $color-primary; background: $color-primary; color: $color-black; }
+}
+
+.logout-mini-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba($color-black, 0.7);
+  border: 1px solid rgba($color-error, 0.4);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  &:hover { background: $color-error; border-color: $color-error; filter: brightness(1.2); }
 }
 
 /* Анимация появления */

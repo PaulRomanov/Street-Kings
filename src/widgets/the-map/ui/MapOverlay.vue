@@ -5,6 +5,7 @@ defineProps<{
   user: any;
   currentHexId: string | null;
   isZoneCapturedByMe: boolean;
+  currentZoneOwner: string | null;
   captureLoading: boolean;
 }>();
 
@@ -19,6 +20,18 @@ const handleCapture = () => {
 <template>
   <div v-if="user" class="map-overlay">
     <div v-if="user" class="map-overlay__actions-panel">
+      <div v-if="currentHexId" class="map-overlay__sector-info anim-slide-up">
+        <div class="sector-badge">
+          <span class="sector-badge__id">{{ currentHexId.substring(0, 12) }}</span>
+          <div class="sector-badge__status" :class="{ 
+            'sector-badge__status--owned': isZoneCapturedByMe,
+            'sector-badge__status--enemy': currentZoneOwner && !isZoneCapturedByMe 
+          }">
+            {{ isZoneCapturedByMe ? t('status_secured') : (currentZoneOwner ? t('status_enemy') : t('status_neutral')) }}
+          </div>
+        </div>
+      </div>
+
       <button 
         v-if="currentHexId"
         class="map-overlay__capture-btn"
@@ -49,22 +62,28 @@ const handleCapture = () => {
   z-index: $z-ui;
   pointer-events: none;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
   
+  /* Разрешаем клики по прямым потомкам */
   & > * {
     pointer-events: auto; 
   }
 
   &__actions-panel {
+    position: absolute;
+    bottom: 30px;
+    left: 0;
+    right: 0;
     width: 100%;
     display: flex;
     justify-content: center;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
-    margin-bottom: 30px;
+    gap: 12px;
+  }
+
+  &__sector-info {
+    width: fit-content;
+    pointer-events: none;
   }
 
   &__capture-btn {
@@ -98,5 +117,53 @@ const handleCapture = () => {
       clip-path: none;
     }
   }
+}
+
+.sector-badge {
+  background: rgba($color-black, 0.8);
+  border: 1px solid rgba($color-white, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+
+  &__id {
+    padding: 6px 12px;
+    color: $color-primary;
+    font-family: monospace;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border-right: 1px solid rgba($color-white, 0.1);
+  }
+
+  &__status {
+    padding: 6px 12px;
+    font-size: 0.7rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: $color-text-muted;
+
+    &--owned {
+      color: $color-success;
+      text-shadow: 0 0 5px rgba($color-success, 0.5);
+    }
+
+    &--enemy {
+      color: $color-error;
+      text-shadow: 0 0 5px rgba($color-error, 0.5);
+    }
+  }
+}
+
+.anim-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>
