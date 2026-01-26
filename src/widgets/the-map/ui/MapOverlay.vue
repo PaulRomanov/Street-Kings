@@ -70,7 +70,7 @@ const handleCapture = () => {
 
   &__actions-panel {
     position: absolute;
-    bottom: 30px;
+    bottom: max(30px, env(safe-area-inset-bottom) + 20px);
     left: 0;
     right: 0;
     width: 100%;

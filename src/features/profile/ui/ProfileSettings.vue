@@ -152,132 +152,134 @@ const collectBonus = async () => {
       <button class="settings-card__close" @click="handleClose">✕</button>
     </div>
 
-    <!-- Табы -->
-    <div class="settings-tabs">
-      <button 
-        class="settings-tabs__item" 
-        :class="{ 'settings-tabs__item--active': activeTab === 'profile' }"
-        @click="activeTab = 'profile'"
-      >
-        {{ t('profile_tab_main') }}
-      </button>
-      <button 
-        class="settings-tabs__item" 
-        :class="{ 'settings-tabs__item--active': activeTab === 'security' }"
-        @click="activeTab = 'security'"
-      >
-        {{ t('profile_tab_security') }}
-      </button>
-    </div>
-
-    <div v-if="!userStore.profile" class="settings-card__loader">
-      {{ t('loading') }}
-    </div>
-    
-    <template v-else>
-      <div v-if="activeTab === 'profile'" class="settings-card__content anim-slide-up">
-        <div class="settings-card__field">
-          <label class="settings-card__label">{{ t('profile_name_label') }}</label>
-          <input 
-            v-model="draftUsername" 
-            type="text" 
-            maxlength="15" 
-            :placeholder="t('profile_name_label') + '...'"
-            class="settings-card__input"
-          />
-        </div>
-
-        <ColorPicker 
-          :colors="colorPalette" 
-          :active-color="draftColor"
-          :label="t('profile_color_label')"
-          @select="selectColor"
-        />
-
-        <div class="settings-card__stats">
-          <div class="stat-box">
-            <span class="stat-box__label">{{ t('profile_stats_balance') }}</span>
-            <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-box__label">{{ t('profile_stats_income') }}</span>
-            <span class="stat-box__value">{{ userStore.totalIncome }} IP / h.</span>
-            <span class="stat-box__sub">{{ t('profile_stats_sectors') }}: {{ userStore.ownedHexCount }}</span>
-          </div>
-        </div>
-
+    <div class="settings-card__body custom-scrollbar">
+      <!-- Табы -->
+      <div class="settings-tabs">
         <button 
-          class="settings-card__collect-btn" 
-          :disabled="!canCollect" 
-          @click="collectBonus"
+          class="settings-tabs__item" 
+          :class="{ 'settings-tabs__item--active': activeTab === 'profile' }"
+          @click="activeTab = 'profile'"
         >
-          {{ canCollect ? t('profile_btn_bonus') : t('profile_btn_bonus_collected') }}
+          {{ t('profile_tab_main') }}
         </button>
-        <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
-          {{ t('profile_bonus_next') }}: {{ nextCollectDate }}
-        </p>
-
-        <div class="settings-card__rules">
-          <button class="rules-btn-mini" @click="showRules = true">
-            📜 {{ t('rules_btn') }}
-          </button>
-        </div>
-
-        <div class="settings-card__actions">
-          <button class="settings-btn settings-btn--secondary" @click="handleClose">{{ t('profile_btn_cancel') }}</button>
-          <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
-        </div>
+        <button 
+          class="settings-tabs__item" 
+          :class="{ 'settings-tabs__item--active': activeTab === 'security' }"
+          @click="activeTab = 'security'"
+        >
+          {{ t('profile_tab_security') }}
+        </button>
       </div>
 
-      <div v-else class="settings-card__content anim-slide-up">
-        <div class="settings-card__section-title">{{ t('profile_sec_email_title') }}</div>
-        <div class="settings-card__field">
-          <label class="settings-card__label">{{ t('profile_sec_email_label') }}</label>
-          <input 
-            v-model="newEmail" 
-            type="email" 
-            placeholder="new-email@example.com"
-            class="settings-card__input"
-          />
-          <button 
-            class="settings-btn settings-btn--primary settings-btn--small" 
-            :disabled="!newEmail || securityLoading"
-            @click="updateEmail"
-          >
-            {{ t('profile_sec_email_btn') }}
-          </button>
-        </div>
-
-        <div class="settings-card__divider"></div>
-
-        <div class="settings-card__section-title">{{ t('profile_sec_pass_title') }}</div>
-        <div class="settings-card__field">
-          <label class="settings-card__label">{{ t('profile_sec_pass_label') }}</label>
-          <input 
-            v-model="newPassword" 
-            type="password" 
-            placeholder="********"
-            class="settings-card__input"
-          />
-        </div>
-        <div class="settings-card__field">
-          <label class="settings-card__label">{{ t('profile_sec_pass_confirm') }}</label>
-          <input 
-            v-model="confirmNewPassword" 
-            type="password" 
-            placeholder="********"
-            class="settings-card__input"
-          />
-          <button 
-            class="settings-btn settings-btn--primary settings-btn--small" 
-            :disabled="!newPassword || securityLoading"
-            @click="updatePassword"
-          >
-            {{ t('profile_sec_pass_btn') }}
-          </button>
-        </div>
+      <div v-if="!userStore.profile" class="settings-card__loader">
+        {{ t('loading') }}
       </div>
-    </template>
+      
+      <template v-else>
+        <div v-if="activeTab === 'profile'" class="settings-card__content anim-slide-up">
+          <div class="settings-card__field">
+            <label class="settings-card__label">{{ t('profile_name_label') }}</label>
+            <input 
+              v-model="draftUsername" 
+              type="text" 
+              maxlength="15" 
+              :placeholder="t('profile_name_label') + '...'"
+              class="settings-card__input"
+            />
+          </div>
+
+          <ColorPicker 
+            :colors="colorPalette" 
+            :active-color="draftColor"
+            :label="t('profile_color_label')"
+            @select="selectColor"
+          />
+
+          <div class="settings-card__stats">
+            <div class="stat-box">
+              <span class="stat-box__label">{{ t('profile_stats_balance') }}</span>
+              <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-box__label">{{ t('profile_stats_income') }}</span>
+              <span class="stat-box__value">{{ userStore.totalIncome }} IP / h.</span>
+              <span class="stat-box__sub">{{ t('profile_stats_sectors') }}: {{ userStore.ownedHexCount }}</span>
+            </div>
+          </div>
+
+          <button 
+            class="settings-card__collect-btn" 
+            :disabled="!canCollect" 
+            @click="collectBonus"
+          >
+            {{ canCollect ? t('profile_btn_bonus') : t('profile_btn_bonus_collected') }}
+          </button>
+          <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
+            {{ t('profile_bonus_next') }}: {{ nextCollectDate }}
+          </p>
+
+          <div class="settings-card__rules">
+            <button class="rules-btn-mini" @click="showRules = true">
+              📜 {{ t('rules_btn') }}
+            </button>
+          </div>
+
+          <div class="settings-card__actions">
+            <button class="settings-btn settings-btn--secondary" @click="handleClose">{{ t('profile_btn_cancel') }}</button>
+            <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
+          </div>
+        </div>
+
+        <div v-else class="settings-card__content anim-slide-up">
+          <div class="settings-card__section-title">{{ t('profile_sec_email_title') }}</div>
+          <div class="settings-card__field">
+            <label class="settings-card__label">{{ t('profile_sec_email_label') }}</label>
+            <input 
+              v-model="newEmail" 
+              type="email" 
+              placeholder="new-email@example.com"
+              class="settings-card__input"
+            />
+            <button 
+              class="settings-btn settings-btn--primary settings-btn--small" 
+              :disabled="!newEmail || securityLoading"
+              @click="updateEmail"
+            >
+              {{ t('profile_sec_email_btn') }}
+            </button>
+          </div>
+
+          <div class="settings-card__divider"></div>
+
+          <div class="settings-card__section-title">{{ t('profile_sec_pass_title') }}</div>
+          <div class="settings-card__field">
+            <label class="settings-card__label">{{ t('profile_sec_pass_label') }}</label>
+            <input 
+              v-model="newPassword" 
+              type="password" 
+              placeholder="********"
+              class="settings-card__input"
+            />
+          </div>
+          <div class="settings-card__field">
+            <label class="settings-card__label">{{ t('profile_sec_pass_confirm') }}</label>
+            <input 
+              v-model="confirmNewPassword" 
+              type="password" 
+              placeholder="********"
+              class="settings-card__input"
+            />
+            <button 
+              class="settings-btn settings-btn--primary settings-btn--small" 
+              :disabled="!newPassword || securityLoading"
+              @click="updatePassword"
+            >
+              {{ t('profile_sec_pass_btn') }}
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
 
     <!-- Модалка правил -->
     <GameRulesModal :is-visible="showRules" @close="showRules = false" />
@@ -292,15 +294,20 @@ const collectBonus = async () => {
   padding: 24px;
   width: 100%;
   max-width: 400px;
+  max-height: calc(100dvh - 60px);
   color: $color-white;
   box-shadow: 0 10px 40px rgba(0,0,0,0.5);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   &__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    flex-shrink: 0;
   }
 
   &__title {
@@ -319,6 +326,15 @@ const collectBonus = async () => {
     cursor: pointer;
     padding: 4px 8px;
     &:hover { color: $color-white; }
+  }
+
+  &__body {
+    overflow-y: auto;
+    flex: 1;
+    margin-right: -14px;
+    padding-right: 14px;
+    
+    /* Сдвигаем маргин для компенсации паддинга и красоты скролла */
   }
 
   &__field {

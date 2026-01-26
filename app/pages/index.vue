@@ -70,7 +70,7 @@ const handleLogout = async () => {
 .game-page {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 
   &__ui {
@@ -78,7 +78,7 @@ const handleLogout = async () => {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 100dvh;
     pointer-events: none; 
     padding: 15px;
     z-index: $z-ui;
@@ -105,7 +105,7 @@ const handleLogout = async () => {
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -118,7 +118,7 @@ const handleLogout = async () => {
 
   &__auth {
     width: 100%;
-    height: 100%;
+    height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;

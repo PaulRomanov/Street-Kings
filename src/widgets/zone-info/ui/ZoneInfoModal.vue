@@ -211,9 +211,20 @@ const closeModal = () => {
   border-radius: 16px;
   color: $color-text;
   max-width: 400px;
+  max-height: calc(100dvh - 40px);
   width: 95%;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+
+  &__content {
+    overflow-y: auto;
+    flex: 1;
+    margin-right: -15px;
+    padding-right: 15px;
+  }
 
   &__close-btn {
     position: absolute;

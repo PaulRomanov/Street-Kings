@@ -313,7 +313,7 @@ onUnmounted(() => {
 .the-map {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
 
   &__container {
     position: absolute;
