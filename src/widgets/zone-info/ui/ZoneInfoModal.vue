@@ -6,6 +6,7 @@ import { useUserStore } from '@/src/stores/useUserStore';
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { calculateLiveStorage } from '@/src/shared/lib/useEconomy';
+import { useTranslation } from '@/src/shared/lib/useTranslation';
 
 const props = defineProps<{
   hexId: string | null;
@@ -17,6 +18,7 @@ const emit = defineEmits(['close']);
 const { fetchZones } = useZones();
 const zoneStore = useZoneStore();
 const userStore = useUserStore();
+const { t } = useTranslation();
 const { allZones } = storeToRefs(zoneStore);
 const { getHexBoundary } = useHexgrid();
 const supabase = useSupabaseClient();
@@ -39,30 +41,27 @@ onUnmounted(() => {
 const accumulatedStorage = computed(() => {
   const zone = allZones.value.find(z => z.id === props.hexId);
   if (!zone) return 0;
-  
-  // Используем общую утилиту для расчета (с передачей currentTime для реактивности)
   return calculateLiveStorage(zone.storage || 0, zone.last_income_at, currentTime.value);
 });
 
 const zoneInfo = computed(() => {
   if (!props.hexId) return null;
   const zone = allZones.value.find(z => z.id === props.hexId);
-  if (!zone) return { status: 'NEUTRAL', id: props.hexId, storage: 0 };
+  if (!zone) return { status: t('status_neutral'), id: props.hexId, storage: 0 };
 
   const isMe = String(zone.owner_id) === String(user.value?.sub);
   
   return {
     id: zone.id,
-    owner: zone.owner_id,
-    username: zone.profiles?.username || 'ANONYMOUS',
+    owner_id: zone.owner_id,
+    username: zone.profiles?.username || t('zone_anonymous'),
     ownerColor: zone.profiles?.color || '#ffffff',
-    status: isMe ? 'SECURED' : 'ENEMY',
+    status: isMe ? t('status_secured') : t('status_enemy'),
+    isMe,
     storage: accumulatedStorage.value,
-    capturedAt: zone.updated_at ? new Date(zone.updated_at).toLocaleString() : 'Неизвестно'
+    capturedAt: zone.updated_at ? new Date(zone.updated_at).toLocaleString() : '---'
   };
 });
-
-const isOwner = computed(() => String(zoneInfo.value?.owner) === String(user.value?.sub));
 
 const harvestIp = async () => {
   if (!props.hexId) return;
@@ -75,7 +74,7 @@ const harvestIp = async () => {
     await fetchZones();
     await userStore.fetchProfile();
   } else {
-     alert(data?.message || 'Ошибка сбора');
+    alert(data?.message || t('error_harvest'));
   }
 };
 
@@ -90,7 +89,28 @@ const fortifyHex = async () => {
     await fetchZones();
     await userStore.fetchProfile();
   } else {
-    alert(data?.message || 'Ошибка укрепления');
+    alert(data?.message || t('error_fortify'));
+  }
+};
+
+const handleCapture = async () => {
+  if (!props.hexId) return;
+  
+  const { data, error } = await (supabase.rpc as any)('capture_hexagon', {
+      target_hex_id: props.hexId
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (data?.success) {
+    await fetchZones();
+    await userStore.fetchProfile();
+    emit('close');
+  } else {
+    alert(data?.message || 'Error capturing');
   }
 };
 
@@ -101,60 +121,71 @@ const closeModal = () => {
 
 <template>
   <div v-if="isVisible && zoneInfo" class="zone-modal-overlay" @click.self="closeModal">
-    <div class="zone-modal">
-      <button class="zone-modal__close-btn" @click="closeModal">×</button>
-      <h2 class="zone-modal__title">Сектор {{ zoneInfo.id.substring(0, 12) }}...</h2>
+    <div class="zone-modal anim-slide-up">
+      <button class="zone-modal__close-btn" @click="closeModal">✕</button>
+      <h2 class="zone-modal__title">{{ t('zone_title') }} {{ zoneInfo.id.substring(0, 12) }}...</h2>
       
       <div class="zone-modal__content">
-        <p class="zone-modal__status">
-          Статус: <strong :class="{ 
-            'zone-modal__tag--secured': zoneInfo.status === 'SECURED',
-            'zone-modal__tag--enemy': zoneInfo.status === 'ENEMY'
-          }">{{ zoneInfo.status }}</strong>
-        </p>
+        <div class="zone-detail">
+          <span class="zone-detail__label">{{ t('zone_status') }}:</span>
+          <span class="zone-detail__value" :class="{ 
+            'zone-detail__value--success': zoneInfo.isMe,
+            'zone-detail__value--danger': !zoneInfo.isMe && zoneInfo.owner_id
+          }">{{ zoneInfo.status }}</span>
+        </div>
 
-        <div v-if="zoneInfo.owner" class="zone-modal__details">
+        <template v-if="zoneInfo.owner_id">
           <div class="zone-detail">
-            <span class="zone-detail__label">Владелец:</span>
+            <span class="zone-detail__label">{{ t('zone_owner') }}:</span>
             <span class="zone-detail__value" :style="{ color: zoneInfo.ownerColor }">
               {{ zoneInfo.username }}
             </span>
           </div>
           <div class="zone-detail">
-            <span class="zone-detail__label">Хранилище:</span>
+            <span class="zone-detail__label">{{ t('zone_storage') }}:</span>
             <span 
               class="zone-detail__value zone-detail__value--highlight" 
-              :class="{ 'zone-detail__value--limit': zoneInfo.storage >= 10 }"
+              :class="{ 'zone-detail__value--limit': accumulatedStorage >= 10 }"
             >
-              {{ zoneInfo.storage?.toFixed(2) }} / 10.00 IP
+              {{ accumulatedStorage.toFixed(2) }} / 10.00 IP
             </span>
           </div>
           <div class="zone-detail">
-            <span class="zone-detail__label">Захвачен:</span>
+            <span class="zone-detail__label">{{ t('zone_captured') }}:</span>
             <span class="zone-detail__value zone-detail__value--small">{{ zoneInfo.capturedAt }}</span>
           </div>
 
-          <div v-if="isOwner" class="zone-modal__actions">
+          <div v-if="zoneInfo.isMe" class="zone-modal__actions">
             <button 
               class="zone-action-btn zone-action-btn--harvest" 
-              :disabled="zoneInfo.storage < 0.01"
+              :disabled="accumulatedStorage < 0.01"
               @click="harvestIp"
             >
-              Собрать IP
+              {{ t('zone_btn_harvest') }}
             </button>
             <button 
               class="zone-action-btn zone-action-btn--fortify" 
-              :disabled="zoneInfo.storage >= 10 || (userStore.profile?.balance || 0) < 1"
+              :disabled="accumulatedStorage >= 10"
               @click="fortifyHex"
             >
-              Укрепить (+1 IP)
+              {{ accumulatedStorage >= 10 ? t('zone_limit_warning') : t('zone_btn_fortify') }}
             </button>
           </div>
-          <p v-if="isOwner && zoneInfo.storage >= 10" class="zone-modal__limit-warning">Хранилище заполнено</p>
-        </div>
+        </template>
 
         <div v-else class="zone-modal__empty">
-          <p>Сектор свободен для захвата за 5.00 IP.</p>
+          <p>{{ t('zone_empty') }}</p>
+          <div class="zone-modal__actions">
+            <button class="zone-action-btn zone-action-btn--harvest" @click="handleCapture">
+              CAPTURE (5.00 IP)
+            </button>
+          </div>
+        </div>
+
+        <div v-if="!zoneInfo.isMe && zoneInfo.owner_id" class="zone-modal__actions">
+          <button class="zone-action-btn zone-action-btn--fortify" @click="handleCapture">
+            ATTACK ({{ (10 + (zoneInfo.storage || 0)).toFixed(2) }} IP)
+          </button>
         </div>
       </div>
     </div>
@@ -180,7 +211,7 @@ const closeModal = () => {
   border-radius: 16px;
   color: $color-text;
   max-width: 400px;
-  width: 90%;
+  width: 95%;
   position: relative;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
 
@@ -202,17 +233,7 @@ const closeModal = () => {
     font-size: 1.1rem;
     letter-spacing: 1px;
     font-family: monospace;
-  }
-
-  &__status {
-    margin-bottom: 20px;
-    font-size: 0.9rem;
-  }
-
-  &__tag {
-    color: $color-text-muted;
-    &--secured { color: $color-success; }
-    &--enemy { color: $color-error; }
+    text-transform: uppercase;
   }
 
   &__actions {
@@ -223,18 +244,12 @@ const closeModal = () => {
     border-top: 1px solid $color-gray-dark;
   }
 
-  &__limit-warning {
-    color: $color-error;
-    font-size: 0.7rem;
-    text-align: center;
-    margin-top: 10px;
-  }
-
   &__empty {
     text-align: center;
     color: $color-text-muted;
-    padding: 20px 0;
+    padding: 10px 0;
     font-size: 0.9rem;
+    p { margin-bottom: 20px; }
   }
 }
 
@@ -249,6 +264,8 @@ const closeModal = () => {
     font-weight: bold; 
     &--highlight { color: $color-primary; }
     &--limit { color: $color-error; }
+    &--success { color: $color-success; }
+    &--danger { color: $color-error; }
     &--small { font-size: 0.75rem; color: $color-gray-light; }
   }
 }
@@ -275,5 +292,14 @@ const closeModal = () => {
     color: $color-primary;
     &:disabled { border-color: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
   }
+}
+
+.anim-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

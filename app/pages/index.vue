@@ -3,13 +3,19 @@ import AuthForm from '@/src/features/auth-form/ui/AuthForm.vue'
 import ProfileSettings from '@/src/features/profile/ui/ProfileSettings.vue'
 import TheMap from '@/src/widgets/the-map/ui/TheMap.vue'
 import { useUserStore } from '@/src/stores/useUserStore'
+import { useTranslation } from '@/src/shared/lib/useTranslation'
 
 const user = useSupabaseUser()
 const userStore = useUserStore()
+const { t, currentLang, setLanguage } = useTranslation()
 const isProfileOpen = ref(false)
 
 const toggleProfile = () => {
   isProfileOpen.value = !isProfileOpen.value
+}
+
+const toggleLanguage = () => {
+  setLanguage(currentLang.value === 'en' ? 'ru' : 'en')
 }
 
 const handleLogout = async () => {
@@ -25,31 +31,34 @@ const handleLogout = async () => {
       <TheMap>
         <div class="game-page__ui">
           <div class="game-page__header">
-            <h1 class="game-page__title">STREET KINGS</h1>
+            <h1 class="game-page__title">{{ t('brand_name') }}</h1>
             <div class="game-page__header-actions">
+              <button class="game-page__lang-btn" @click="toggleLanguage">
+                {{ currentLang.toUpperCase() }}
+              </button>
               <button class="game-page__profile-toggle" @click="toggleProfile">
-                ЛИЧНЫЙ КАБИНЕТ
+                {{ t('nav_profile') }}
               </button>
               <button class="game-page__logout-btn" @click="handleLogout">
-                LOGOUT
+                {{ t('nav_logout') }}
               </button>
             </div>
           </div>
 
           <div class="game-page__status-bar">
             <div class="game-page__status-item">
-              <span class="game-page__status-label">SECTOR</span>
-              <span class="game-page__status-value">{{ userStore.currentHexId?.substring(0, 12) || 'SCANNING...' }}</span>
+              <span class="game-page__status-label">{{ t('status_sector') }}</span>
+              <span class="game-page__status-value">{{ userStore.currentHexId?.substring(0, 12) || t('status_scanning') }}</span>
               <div v-if="userStore.currentHexId" class="game-page__status-tag" :class="{ 
                 'game-page__status-tag--owned': userStore.isZoneCapturedByMe,
                 'game-page__status-tag--enemy': userStore.currentZoneOwner && !userStore.isZoneCapturedByMe 
               }">
-                {{ userStore.isZoneCapturedByMe ? 'SECURED' : (userStore.currentZoneOwner ? 'ENEMY' : 'NEUTRAL') }}
+                {{ userStore.isZoneCapturedByMe ? t('status_secured') : (userStore.currentZoneOwner ? t('status_enemy') : t('status_neutral')) }}
               </div>
             </div>
 
             <div class="game-page__status-item">
-              <span class="game-page__status-label">BALANCE</span>
+              <span class="game-page__status-label">{{ t('status_balance') }}</span>
               <div class="game-page__status-value game-page__status-value--success">
                 ⚡ {{ userStore.profile?.balance?.toFixed(1) || 0 }} IP
               </div>
@@ -96,11 +105,22 @@ const handleLogout = async () => {
     justify-content: space-between;
     align-items: center;
     pointer-events: auto; 
+    gap: 15px;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
   }
 
   &__header-actions {
     display: flex;
     gap: 10px;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+    }
   }
 
   &__title {
@@ -108,6 +128,11 @@ const handleLogout = async () => {
     text-shadow: 0 0 10px rgba($color-primary, 0.5);
     font-weight: 900;
     margin: 0;
+    white-space: nowrap;
+
+    @media (max-width: 600px) {
+      text-align: center;
+    }
   }
 
   &__settings-wrapper {
@@ -124,6 +149,18 @@ const handleLogout = async () => {
     z-index: $z-modal;
     pointer-events: auto;
     padding: 20px;
+  }
+
+  &__lang-btn {
+    background: rgba($color-black, 0.7);
+    border: 1px solid $color-gray-light;
+    color: $color-primary;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+    &:hover { border-color: $color-primary; }
   }
 
   &__profile-toggle {

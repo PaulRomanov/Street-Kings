@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useTranslation } from '@/src/shared/lib/useTranslation'
+
 defineProps<{
   user: any;
   currentHexId: string | null;
@@ -7,6 +9,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits(['capture']);
+const { t } = useTranslation();
 
 const handleCapture = () => {
     emit('capture');
@@ -24,13 +27,13 @@ const handleCapture = () => {
         @click="handleCapture"
       >
         <template v-if="captureLoading">
-          <span>SCANNING...</span>
+          <span>{{ t('overlay_scanning') }}</span>
         </template>
         <template v-else-if="isZoneCapturedByMe">
-          <span>● SECTOR SECURED</span>
+          <span>● {{ t('overlay_secured') }}</span>
         </template>
         <template v-else>
-          <span>CAPTURE ZONE</span>
+          <span>{{ t('overlay_capture') }}</span>
         </template>
       </button>
     </div>

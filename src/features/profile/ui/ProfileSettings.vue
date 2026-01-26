@@ -2,10 +2,12 @@
 import { useUserStore } from '@/src/stores/useUserStore'
 import ColorPicker from '@/src/widgets/user-profile/ui/ColorPicker.vue'
 import { COLORS } from '@/src/shared/config/colors'
+import { useTranslation } from '@/src/shared/lib/useTranslation'
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const userStore = useUserStore()
+const { t } = useTranslation()
 
 const activeTab = ref<'profile' | 'security'>('profile')
 
@@ -51,7 +53,7 @@ const saveChanges = async () => {
   
   if (draftUsername.value !== userStore.profile?.username) {
     if (draftUsername.value.length > 15) {
-      alert('Ник слишком длинный!')
+      alert(t('profile_error_long'))
       return
     }
     updates.username = draftUsername.value
@@ -71,7 +73,7 @@ const updateEmail = async () => {
   try {
     const { error } = await supabase.auth.updateUser({ email: newEmail.value })
     if (error) throw error
-    alert('Инструкции по подтверждению отправлены на оба адреса (старый и новый).')
+    alert(t('profile_alert_email'))
     newEmail.value = ''
   } catch (e: any) {
     alert(e.message)
@@ -83,7 +85,7 @@ const updateEmail = async () => {
 const updatePassword = async () => {
   if (!newPassword.value) return
   if (newPassword.value !== confirmNewPassword.value) {
-    alert('Пароли не совпадают')
+    alert(t('auth_error_mismatch'))
     return
   }
   
@@ -91,7 +93,7 @@ const updatePassword = async () => {
   try {
     const { error } = await supabase.auth.updateUser({ password: newPassword.value })
     if (error) throw error
-    alert('Пароль успешно изменен!')
+    alert(t('profile_alert_pass'))
     newPassword.value = ''
     confirmNewPassword.value = ''
   } catch (e: any) {
@@ -136,7 +138,7 @@ const collectBonus = async () => {
   if (data?.success) {
     userStore.fetchProfile()
   } else {
-    alert('Бонус еще не готов')
+    alert(t('auth_btn_wait'))
   }
 }
 </script>
@@ -144,7 +146,7 @@ const collectBonus = async () => {
 <template>
   <div class="settings-card">
     <div class="settings-card__header">
-      <h2 class="settings-card__title">Личный кабинет</h2>
+      <h2 class="settings-card__title">{{ t('profile_title') }}</h2>
       <button class="settings-card__close" @click="handleClose">✕</button>
     </div>
 
@@ -155,30 +157,30 @@ const collectBonus = async () => {
         :class="{ 'settings-tabs__item--active': activeTab === 'profile' }"
         @click="activeTab = 'profile'"
       >
-        ПРОФИЛЬ
+        {{ t('profile_tab_main') }}
       </button>
       <button 
         class="settings-tabs__item" 
         :class="{ 'settings-tabs__item--active': activeTab === 'security' }"
         @click="activeTab = 'security'"
       >
-        БЕЗОПАСНОСТЬ
+        {{ t('profile_tab_security') }}
       </button>
     </div>
 
     <div v-if="!userStore.profile" class="settings-card__loader">
-      Загрузка данных...
+      {{ t('loading') }}
     </div>
     
     <template v-else>
       <div v-if="activeTab === 'profile'" class="settings-card__content anim-slide-up">
         <div class="settings-card__field">
-          <label class="settings-card__label">Твой позывной (Street Name)</label>
+          <label class="settings-card__label">{{ t('profile_name_label') }}</label>
           <input 
             v-model="draftUsername" 
             type="text" 
             maxlength="15" 
-            placeholder="Введите ник..."
+            :placeholder="t('profile_name_label') + '...'"
             class="settings-card__input"
           />
         </div>
@@ -186,19 +188,19 @@ const collectBonus = async () => {
         <ColorPicker 
           :colors="colorPalette" 
           :active-color="draftColor"
-          label="Цвет твоих территорий"
+          :label="t('profile_color_label')"
           @select="selectColor"
         />
 
         <div class="settings-card__stats">
           <div class="stat-box">
-            <span class="stat-box__label">Баланс</span>
+            <span class="stat-box__label">{{ t('profile_stats_balance') }}</span>
             <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
           </div>
           <div class="stat-box">
-            <span class="stat-box__label">Доход (общий)</span>
-            <span class="stat-box__value">{{ userStore.totalIncome }} IP / ч.</span>
-            <span class="stat-box__sub">Секторов: {{ userStore.ownedHexCount }}</span>
+            <span class="stat-box__label">{{ t('profile_stats_income') }}</span>
+            <span class="stat-box__value">{{ userStore.totalIncome }} IP / h.</span>
+            <span class="stat-box__sub">{{ t('profile_stats_sectors') }}: {{ userStore.ownedHexCount }}</span>
           </div>
         </div>
 
@@ -207,22 +209,22 @@ const collectBonus = async () => {
           :disabled="!canCollect" 
           @click="collectBonus"
         >
-          {{ canCollect ? 'СОБРАТЬ DAILY BONUS (+10 IP)' : 'DAILY BONUS СОБРАН' }}
+          {{ canCollect ? t('profile_btn_bonus') : t('profile_btn_bonus_collected') }}
         </button>
         <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
-          Следующий бонус: {{ nextCollectDate }}
+          {{ t('profile_bonus_next') }}: {{ nextCollectDate }}
         </p>
 
         <div class="settings-card__actions">
-          <button class="settings-btn settings-btn--secondary" @click="handleClose">Отмена</button>
-          <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">Сохранить</button>
+          <button class="settings-btn settings-btn--secondary" @click="handleClose">{{ t('profile_btn_cancel') }}</button>
+          <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
         </div>
       </div>
 
       <div v-else class="settings-card__content anim-slide-up">
-        <div class="settings-card__section-title">Смена почты</div>
+        <div class="settings-card__section-title">{{ t('profile_sec_email_title') }}</div>
         <div class="settings-card__field">
-          <label class="settings-card__label">Новый Email (потребуется подтверждение)</label>
+          <label class="settings-card__label">{{ t('profile_sec_email_label') }}</label>
           <input 
             v-model="newEmail" 
             type="email" 
@@ -234,15 +236,15 @@ const collectBonus = async () => {
             :disabled="!newEmail || securityLoading"
             @click="updateEmail"
           >
-            ОБНОВИТЬ ПОЧТУ
+            {{ t('profile_sec_email_btn') }}
           </button>
         </div>
 
         <div class="settings-card__divider"></div>
 
-        <div class="settings-card__section-title">Смена пароля</div>
+        <div class="settings-card__section-title">{{ t('profile_sec_pass_title') }}</div>
         <div class="settings-card__field">
-          <label class="settings-card__label">Новый пароль</label>
+          <label class="settings-card__label">{{ t('profile_sec_pass_label') }}</label>
           <input 
             v-model="newPassword" 
             type="password" 
@@ -251,7 +253,7 @@ const collectBonus = async () => {
           />
         </div>
         <div class="settings-card__field">
-          <label class="settings-card__label">Подтвердите новый пароль</label>
+          <label class="settings-card__label">{{ t('profile_sec_pass_confirm') }}</label>
           <input 
             v-model="confirmNewPassword" 
             type="password" 
@@ -263,7 +265,7 @@ const collectBonus = async () => {
             :disabled="!newPassword || securityLoading"
             @click="updatePassword"
           >
-            СМЕНИТЬ ПАРОЛЬ
+            {{ t('profile_sec_pass_btn') }}
           </button>
         </div>
       </div>

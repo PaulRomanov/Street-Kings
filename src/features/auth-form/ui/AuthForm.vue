@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { useTranslation } from '@/src/shared/lib/useTranslation'
 const supabase = useSupabaseClient()
+const { t } = useTranslation()
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -21,18 +23,18 @@ const handleAuth = async () => {
         redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
       })
       if (error) throw error
-      alert('Инструкции по сбросу отправлены на почту!')
+      alert(t('auth_alert_reset'))
       isResetMode.value = false
     } else if (isRegister.value) {
       if (password.value !== confirmPassword.value) {
-         throw new Error('Пароли не совпадают')
+         throw new Error(t('auth_error_mismatch'))
       }
       const { error } = await supabase.auth.signUp({
         email: email.value,
         password: password.value,
       })
       if (error) throw error
-      alert('Проверьте почту для подтверждения регистрации!')
+      alert(t('auth_alert_signup'))
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.value,
@@ -62,16 +64,16 @@ const toggleReset = () => {
 
 <template>
   <div class="auth-container">
-    <h1 class="auth-brand">STREET KINGS</h1>
+    <h1 class="auth-brand">{{ t('brand_name') }}</h1>
     
     <div class="auth-form">
       <h2 class="auth-form__title">
-        {{ isResetMode ? 'СБРОС ПАРОЛЯ' : (isRegister ? 'РЕГИСТРАЦИЯ' : 'ВХОД В СИСТЕМУ') }}
+        {{ isResetMode ? t('auth_title_reset') : (isRegister ? t('auth_title_register') : t('auth_title_login')) }}
       </h2>
       
       <div class="auth-form__fields">
         <div class="auth-field">
-          <input v-model="email" type="email" placeholder="EMAIL" class="auth-field__input" />
+          <input v-model="email" type="email" :placeholder="t('auth_email_placeholder')" class="auth-field__input" />
         </div>
 
         <template v-if="!isResetMode">
@@ -79,14 +81,13 @@ const toggleReset = () => {
             <input 
               v-model="password" 
               :type="showPassword ? 'text' : 'password'" 
-              placeholder="PASSWORD" 
+              :placeholder="t('auth_pass_placeholder')" 
               class="auth-field__input" 
             />
             <button 
               type="button" 
               class="auth-field__toggle-eye" 
               @click="showPassword = !showPassword"
-              title="Показать пароль"
             >
               {{ showPassword ? '👁️' : '👁️‍🗨️' }}
             </button>
@@ -96,14 +97,13 @@ const toggleReset = () => {
             <input 
               v-model="confirmPassword" 
               :type="showConfirmPassword ? 'text' : 'password'" 
-              placeholder="CONFIRM PASSWORD" 
+              :placeholder="t('auth_confirm_pass_placeholder')" 
               class="auth-field__input" 
             />
             <button 
               type="button" 
               class="auth-field__toggle-eye" 
               @click="showConfirmPassword = !showConfirmPassword"
-              title="Показать пароль"
             >
               {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
             </button>
@@ -114,15 +114,15 @@ const toggleReset = () => {
       <p v-if="errorMsg" class="auth-form__error">{{ errorMsg }}</p>
 
       <button @click="handleAuth" :disabled="loading" class="auth-form__submit">
-        {{ loading ? 'WAIT...' : (isResetMode ? 'SEND RESET LINK' : (isRegister ? 'CREATE ACCOUNT' : 'LOG IN')) }}
+        {{ loading ? t('auth_btn_wait') : (isResetMode ? t('auth_btn_reset') : (isRegister ? t('auth_btn_register') : t('auth_btn_login'))) }}
       </button>
 
       <div class="auth-form__navigation">
         <button v-if="!isResetMode" @click="toggleMode" class="auth-nav-btn">
-          {{ isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Регистрация' }}
+          {{ isRegister ? t('auth_nav_login') : t('auth_nav_register') }}
         </button>
         <button @click="toggleReset" class="auth-nav-btn auth-nav-btn--muted">
-          {{ isResetMode ? 'Вернуться ко входу' : 'Забыли пароль?' }}
+          {{ isResetMode ? t('auth_nav_back') : t('auth_nav_forgot') }}
         </button>
       </div>
     </div>
