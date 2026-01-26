@@ -87,13 +87,15 @@ const sendFeedback = async () => {
   if (!feedbackMessage.value) return
   feedbackLoading.value = true
   try {
-    const { error } = await supabase.from('feedback').insert({
+    const { error } = await (supabase.from('feedback') as any).insert({
       user_id: user.value?.sub,
+      username: userStore.profile?.username,
+      email: user.value?.email,
       message: feedbackMessage.value,
       type: feedbackType.value
     })
     if (error) throw error
-    alert(t('feedback_success') || 'Message sent to headquarters.')
+    alert(t('feedback_success' as any) || 'Message sent to headquarters.')
     feedbackMessage.value = ''
   } catch (e: any) {
     alert(e.message)
@@ -460,15 +462,21 @@ const collectBonus = async () => {
 
   &__collect-btn {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     background: $color-success;
     color: #000;
     border: none;
     border-radius: 8px;
-    font-weight: bold;
+    font-weight: 900;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     cursor: pointer;
     margin-top: 15px;
+    transition: all 0.2s;
+    font-family: inherit;
     &:disabled { background: $color-gray-medium; color: $color-text-muted; cursor: not-allowed; }
+    &:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
   }
 
   &__rules {
@@ -578,31 +586,37 @@ const collectBonus = async () => {
 
 .settings-btn {
   flex: 1;
-  padding: 12px;
+  padding: 14px;
   border: none;
   border-radius: 8px;
-  font-weight: bold;
+  font-weight: 900;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &--primary {
     background: $color-primary;
     color: #000;
     &:disabled { opacity: 0.4; cursor: not-allowed; }
-    &:not(:disabled):hover { filter: brightness(1.2); }
+    &:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
   }
 
   &--secondary {
     background: transparent;
     border: 1px solid $color-gray-light;
     color: $color-text-muted;
-    &:hover { border-color: $color-text-muted; color: $color-white; }
+    &:hover { border-color: $color-text-muted; color: $color-white; background: rgba($color-white, 0.05); }
   }
 
   &--small {
-    padding: 8px 12px;
-    font-size: 0.7rem;
+    padding: 10px 16px;
+    font-size: 0.75rem;
     margin-top: 10px;
     width: fit-content;
     align-self: flex-end;

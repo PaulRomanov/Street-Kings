@@ -2,6 +2,7 @@
 import AuthForm from '@/src/features/auth-form/ui/AuthForm.vue'
 import ProfileSettings from '@/src/features/profile/ui/ProfileSettings.vue'
 import TheMap from '@/src/widgets/the-map/ui/TheMap.vue'
+import ChatWidget from '@/src/widgets/chat/ui/ChatWidget.vue'
 import { useUserStore } from '@/src/stores/useUserStore'
 import { useTranslation } from '@/src/shared/lib/useTranslation'
 
@@ -54,6 +55,8 @@ const handleLogout = async () => {
           <div v-if="isProfileOpen" class="game-page__settings-wrapper">
             <ProfileSettings @close="isProfileOpen = false" @saved="isProfileOpen = false" />
           </div>
+
+          <ChatWidget />
         </div>
       </TheMap>
     </template>
