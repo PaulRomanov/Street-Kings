@@ -54,6 +54,46 @@ const fetchPrivateMessages = async () => {
   }
 }
 
+const conversations = computed(() => {
+  if (!userStore.profile?.id) return []
+  const groups: Record<string, any> = {}
+  
+  privateMessages.value.forEach(msg => {
+    const isMeSender = msg.sender_id === userStore.profile.id
+    const otherUser = isMeSender ? msg.recipient : msg.sender
+    const otherId = isMeSender ? msg.recipient_id : msg.sender_id
+    
+    if (!otherId) return
+
+    if (!groups[otherId] || new Date(msg.created_at) > new Date(groups[otherId].lastMessageDate)) {
+      groups[otherId] = {
+        userId: otherId,
+        username: otherUser?.username || 'ANON',
+        color: otherUser?.color || '#fff',
+        lastMessage: msg.content,
+        lastMessageDate: msg.created_at
+      }
+    }
+  })
+  
+  return Object.values(groups).sort((a: any, b: any) => 
+    new Date(b.lastMessageDate).getTime() - new Date(a.lastMessageDate).getTime()
+  )
+})
+
+const filteredPrivateMessages = computed(() => {
+  if (!chatStore.activeRecipientId) return []
+  return privateMessages.value.filter(msg => 
+    msg.sender_id === chatStore.activeRecipientId || msg.recipient_id === chatStore.activeRecipientId
+  )
+})
+
+const selectConversation = (conv: any) => {
+  chatStore.activeRecipientId = conv.userId
+  chatStore.activeRecipientName = conv.username
+  nextTick(() => scrollToBottom())
+}
+
 // Отправка сообщения
 const sendMessage = async () => {
   if (!newMessage.value.trim() || !userStore.profile?.id) return
@@ -78,8 +118,6 @@ const sendMessage = async () => {
        console.error(error)
        newMessage.value = content
     }
-  } else {
-    alert('Select a recipient from the map or chat first.')
   }
 }
 
@@ -202,26 +240,55 @@ onUnmounted(() => {
 
         <!-- Личный чат -->
         <template v-else>
-          <div v-if="chatStore.activeRecipientName" class="chat-active-recipient">
-            📟 {{ t('chat_private_with' as any) }}: <span>{{ chatStore.activeRecipientName }}</span>
-          </div>
-          <div v-if="privateMessages.length === 0" class="chat-empty">
-            {{ t('chat_no_messages' as any) }}
-          </div>
-          <div 
-            v-for="msg in privateMessages" 
-            :key="msg.id" 
-            class="chat-msg"
-            :class="{ 'chat-msg--mine': msg.sender_id === userStore.profile?.id }"
-          >
-            <div class="chat-msg__meta">
-              <span class="chat-msg__author" :style="{ color: (msg.sender_id === userStore.profile?.id ? msg.recipient?.color : msg.sender?.color) || '#fff' }">
-                {{ msg.sender_id === userStore.profile?.id ? 'TO: ' + (msg.recipient?.username || '...') : (msg.sender?.username || '...') }}
-              </span>
-              <span class="chat-msg__time">{{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
+          <!-- Список диалогов -->
+          <div v-if="!chatStore.activeRecipientId" class="chat-conversations">
+            <div v-if="conversations.length === 0" class="chat-empty">
+              {{ t('chat_no_messages' as any) }}
             </div>
-            <div class="chat-msg__content">{{ msg.content }}</div>
+            <div 
+              v-for="conv in conversations" 
+              :key="conv.userId" 
+              class="chat-conv-item"
+              @click="selectConversation(conv)"
+            >
+              <div class="chat-conv-item__avatar" :style="{ background: conv.color }">
+                {{ conv.username.charAt(0) }}
+              </div>
+              <div class="chat-conv-item__info">
+                <div class="chat-conv-item__meta">
+                  <span class="chat-conv-item__user" :style="{ color: conv.color }">{{ conv.username }}</span>
+                  <span class="chat-conv-item__date">{{ new Date(conv.lastMessageDate).toLocaleDateString() }}</span>
+                </div>
+                <div class="chat-conv-item__last">{{ conv.lastMessage }}</div>
+              </div>
+            </div>
           </div>
+
+          <!-- Окно конкретного диалога -->
+          <template v-else>
+            <div class="chat-active-recipient">
+              <button class="chat-back-btn" @click="chatStore.clearRecipient()">←</button>
+              📟 <span>{{ chatStore.activeRecipientName }}</span>
+            </div>
+            
+            <div v-if="filteredPrivateMessages.length === 0" class="chat-empty">
+              {{ t('chat_no_messages' as any) }}
+            </div>
+            <div 
+              v-for="msg in filteredPrivateMessages" 
+              :key="msg.id" 
+              class="chat-msg"
+              :class="{ 'chat-msg--mine': msg.sender_id === userStore.profile?.id }"
+            >
+              <div class="chat-msg__meta">
+                <span class="chat-msg__author" :style="{ color: (msg.sender_id === userStore.profile?.id ? msg.recipient?.color : msg.sender?.color) || '#fff' }">
+                  {{ msg.sender_id === userStore.profile?.id ? 'YOU' : (msg.sender?.username || '...') }}
+                </span>
+                <span class="chat-msg__time">{{ new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</span>
+              </div>
+              <div class="chat-msg__content">{{ msg.content }}</div>
+            </div>
+          </template>
         </template>
       </div>
 
@@ -357,8 +424,89 @@ onUnmounted(() => {
   border-radius: 6px;
   font-size: 0.75rem;
   color: $color-text-muted;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   span { color: $color-primary; font-weight: 900; }
+}
+
+.chat-back-btn {
+  background: rgba($color-white, 0.1);
+  border: none;
+  color: $color-white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: rgba($color-white, 0.2); }
+}
+
+.chat-conversations {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-conv-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: rgba($color-white, 0.03);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+
+  &:hover {
+    background: rgba($color-white, 0.08);
+    border-color: rgba($color-primary, 0.2);
+  }
+
+  &__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 0.9rem;
+    color: rgba(0,0,0,0.7);
+    flex-shrink: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__meta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  &__user {
+    font-size: 0.75rem;
+    font-weight: 900;
+  }
+
+  &__date {
+    font-size: 0.6rem;
+    color: rgba($color-white, 0.3);
+  }
+
+  &__last {
+    font-size: 0.7rem;
+    color: rgba($color-white, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .chat-empty {

@@ -15,6 +15,10 @@ export const useChatStore = defineStore('chat', () => {
 
   const closeChat = () => {
     isOpen.value = false
+    clearRecipient()
+  }
+
+  const clearRecipient = () => {
     activeRecipientId.value = null
     activeRecipientName.value = null
   }
@@ -25,6 +29,7 @@ export const useChatStore = defineStore('chat', () => {
     activeRecipientId,
     activeRecipientName,
     openChatWithUser,
-    closeChat
+    closeChat,
+    clearRecipient
   }
 })
