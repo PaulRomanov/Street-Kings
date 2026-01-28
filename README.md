@@ -1,45 +1,46 @@
 # 🏙️ STREET KINGS
 
-**STREET KINGS** — это амбициозная MMO-стратегия в реальном времени, основанная на геолокации. Игроки захватывают реальные городские территории, расширяют сферы влияния и сражаются за звание "Короля улиц", используя интерактивную карту мира.
+**STREET KINGS** is an ambitious location-based MMO strategy game. Players capture real-world urban territories, expand their influence, and battle for the title of "King of the Streets" using an interactive world map.
 
-🔗 **Демо проекта:** [https://street-kings.vercel.app/](https://street-kings.vercel.app/)
-
----
-
-## 🚀 Особенности (Features)
-
-* **Real-time Map:** Полноэкранная интерактивная карта на базе Mapbox GL JS.
-* **Hexagonal Grid:** Уникальная система разбиения мира на игровые гексагоны (районы) с использованием осевых координат ($q$, $r$).
-* **Territory Capture:** Механика захвата территорий: окрашивай улицы города в свой цвет.
-* **Player Economy:** Накопление игровой валюты (IP — Influence Points) и пассивный доход с захваченных зон.
-* **Customization:** Личный кабинет с возможностью выбора позывного и цвета своей "банды".
-* **Daily Rewards:** Система ежедневных бонусов через RPC-функции базы данных.
-
-## 🛠 Технологический стек
-
-* **Frontend:** [Nuxt 3/4](https://nuxt.com/) (Vue.js)
-* **State Management:** [Pinia](https://pinia.vuejs.org/)
-* **Backend & DB:** [Supabase](https://supabase.com/) (PostgreSQL + Realtime + RLS)
-* **Maps:** [Mapbox GL JS](https://www.mapbox.com/mapbox-gl-js)
-* **Styles:** SCSS (SASS) с использованием переменных и миксинов.
-* **Architecture:** [Feature-Sliced Design (FSD)](https://feature-sliced.design/)
+🔗 **Project Demo:** [https://street-kings.vercel.app/](https://street-kings.vercel.app/)
 
 ---
 
-## 📂 Структура проекта (FSD)
+## 🚀 Key Features
 
-Проект построен по методологии **Feature-Sliced Design**, что обеспечивает масштабируемость и независимость модулей:
+- **Real-time Geolocation Map:** Full-screen interactive map powered by Mapbox GL JS, synced with your real-world position. 🏹
+- **Hexagonal Grid Intelligence:** A custom grid system dividing the world into tactical sectors using axial coordinates. 🗺️
+- **Physical Presence Capture:** True street control. Captured or attack actions are only possible if you are physically present in the sector. 📍
+- **Dynamic Economy:** Earn Intelligence Points (IP) from your sectors. Manage storage limits, fortify nodes, and harvest resources in real-time. ⚡
+- **Communications Hub:**
+  - **Global Frequency:** Real-time chat with all nearby kings.
+  - **Encrypted DMs:** Private messaging system with organized "Mailbox" conversations.
+  - **Intel Alerts:** Visual pulse notifications for incoming messages. 🚨
+- **Deep Customization:** Personalize your profile with a unique "Street Name" and tactical colors to mark your turf. 🎨
+- **Encrypted Access:** Full authentication system with secure profile management and multi-language support (EN/RU). 🛡️
 
-* `src/app` — Инициализация приложения, глобальные стили, плагины.
-* `src/pages` — Игровые экраны (Map Page, Auth).
-* `src/widgets` — Крупные блоки (интерактивная карта `TheMap`).
-* `src/features` — Пользовательские сценарии (авторизация, настройки профиля, сбор бонуса).
-* `src/shared` — API-клиенты, типы, константы и математические утилиты для гексагональной сетки.
+## 🛠 Tech Stack
 
-  
-<img width="609" height="717" alt="Снимок экрана 2026-01-26 в 17 29 12" src="https://github.com/user-attachments/assets/c74c51e5-ec63-4d40-9660-b22aa6df6c2b" />
+- **Framework:** [Nuxt 3](https://nuxt.com/) (Vue.js 3 Composition API)
+- **State:** [Pinia](https://pinia.vuejs.org/)
+- **Backend & DB:** [Supabase](https://supabase.com/) (PostgreSQL + Realtime + RLS)
+- **Maps API:** [Mapbox GL JS](https://www.mapbox.com/mapbox-gl-js)
+- **Styles:** SCSS (SASS) with a modular variable system.
+- **Architecture:** [Feature-Sliced Design (FSD)](https://feature-sliced.design/)
 
-<img width="406" height="968" alt="Снимок экрана 2026-01-26 в 17 32 25" src="https://github.com/user-attachments/assets/1b431107-4956-4124-8f28-676036b07078" />
+---
 
+## 📂 Project Structure (FSD)
 
+The project architecture ensures maximum scalability and clean code separation:
 
+- `src/app` — Global initialization, styles, and Nuxt plugins.
+- `src/pages` — Game screens (Map View, Authentication).
+- `src/widgets` — Complex UI modules (`TheMap`, `ChatWidget`, `ZoneInfoModal`).
+- `src/features` — Core user scenarios (Capture logic, Profile updates, Bonus collection).
+- `src/entities` — Logic and state for game objects (Zones, User Profiles).
+- `src/shared` — Reusable toolkits, Mapbox configs, and coordinate utilities.
+
+<img src="./public/images/gameplay_preview2.png" width="100%" alt="Street Kings Gameplay" />
+
+<img src="./public/images/gameplay_preview.png" width="100%" alt="Street Kings Gameplay" />
