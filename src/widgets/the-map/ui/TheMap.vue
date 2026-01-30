@@ -10,6 +10,7 @@ import TerminalLog from '@/src/widgets/terminal/ui/TerminalLog.vue';
 import MapOverlay from './MapOverlay.vue';
 import { useMapLayers } from '../model/useMapLayers';
 import { useZoneCapture } from '../model/useZoneCapture';
+import { useBots } from '@/src/features/bots/model/useBots';
 
 
 import { useUserStore } from '@/src/stores/useUserStore';
@@ -22,6 +23,7 @@ const { captureHex, loading: captureLoading } = useCapture();
 const { coords, startTracking, stopTracking } = useGeolocation();
 const { getHexBoundary, getHexId } = useHexgrid();
 const { token, style } = useMapboxConfig();
+const { spawnBots, spawnBotsForUser } = useBots();
 const user = useSupabaseUser();
 const userStore = useUserStore();
 
@@ -203,6 +205,7 @@ watch(coords, (newCoords) => {
   // Только первый раз летим принудительно
   if (isFirstFly.value) {
     centerOnUser();
+    spawnBots(newCoords.lat, newCoords.lng);
     isFirstFly.value = false;
   }
 });
