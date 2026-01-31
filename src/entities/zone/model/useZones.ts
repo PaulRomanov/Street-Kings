@@ -10,7 +10,7 @@ export const useZones = () => {
     zoneStore.isLoading = true
     const { data, error } = await supabase
       .from('hexagons')
-      .select('id, owner_id, storage, updated_at, profiles(color, username)')
+      .select('id, owner_id, storage, updated_at, profiles(color, username, pattern)')
     
     if (data) {
       zoneStore.setZones(data) 

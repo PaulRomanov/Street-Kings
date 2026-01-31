@@ -56,6 +56,7 @@ export type Database = {
           id: string
           last_daily_collect: string | null
           username: string | null
+          pattern: string | null
         }
         Insert: {
           balance?: number | null
@@ -63,6 +64,7 @@ export type Database = {
           id: string
           last_daily_collect?: string | null
           username?: string | null
+          pattern?: string | null
         }
         Update: {
           balance?: number | null
@@ -70,6 +72,7 @@ export type Database = {
           id?: string
           last_daily_collect?: string | null
           username?: string | null
+          pattern?: string | null
         }
         Relationships: []
       }

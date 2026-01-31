@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useUserStore } from '@/src/stores/useUserStore'
 import ColorPicker from '@/src/widgets/user-profile/ui/ColorPicker.vue'
+import PatternPicker from '@/src/widgets/user-profile/ui/PatternPicker.vue'
 import { COLORS } from '@/src/shared/config/colors'
 import { useTranslation } from '@/src/shared/lib/useTranslation'
 import GameRulesModal from '@/src/widgets/game-rules/ui/GameRulesModal.vue'
@@ -11,11 +12,13 @@ const userStore = useUserStore()
 const { t } = useTranslation()
 
 const activeTab = ref<'profile' | 'security' | 'support'>('profile')
+const isAppearanceMode = ref(false)
 const showRules = ref(false)
 
 // Данные профиля
 const draftUsername = ref('')
 const draftColor = ref('')
+const draftPattern = ref<string | null>(null)
 const colorPalette = COLORS.PLAYER_PALETTE
 
 // Данные безопасности
@@ -38,6 +41,7 @@ watch(() => userStore.profile, (profile) => {
   if (profile) {
     draftUsername.value = profile.username || ''
     draftColor.value = profile.color || COLORS.PLAYER_PALETTE[0]
+    draftPattern.value = profile.pattern || null
   }
 }, { immediate: true })
 
@@ -45,7 +49,8 @@ const hasChanges = computed(() => {
   if (!userStore.profile) return false
   return (
     draftUsername.value !== (userStore.profile.username || '') ||
-    draftColor.value !== (userStore.profile.color || COLORS.PLAYER_PALETTE[0])
+    draftColor.value !== (userStore.profile.color || COLORS.PLAYER_PALETTE[0]) ||
+    draftPattern.value !== (userStore.profile.pattern || null)
   )
 })
 
@@ -56,7 +61,7 @@ const selectColor = (color: string) => {
 const saveChanges = async () => {
   if (!hasChanges.value) return
   
-  const updates: { username?: string; color?: string } = {}
+  const updates: { username?: string; color?: string; pattern?: string | null } = {}
   
   if (draftUsername.value !== userStore.profile?.username) {
     if (draftUsername.value.length > 15) {
@@ -68,6 +73,10 @@ const saveChanges = async () => {
   
   if (draftColor.value !== userStore.profile?.color) {
     updates.color = draftColor.value
+  }
+
+  if (draftPattern.value !== userStore.profile?.pattern) {
+    updates.pattern = draftPattern.value
   }
   
   try {
@@ -144,6 +153,7 @@ const handleClose = () => {
   if (userStore.profile) {
     draftUsername.value = userStore.profile.username || ''
     draftColor.value = userStore.profile.color || COLORS.PLAYER_PALETTE[0]
+    draftPattern.value = userStore.profile.pattern || null
   }
   emit('close')
 }
@@ -219,58 +229,82 @@ const collectBonus = async () => {
       
       <template v-else>
         <div v-if="activeTab === 'profile'" class="settings-card__content anim-slide-up">
-          <!-- ... existing profile content ... -->
-          <div class="settings-card__field">
-            <label class="settings-card__label">{{ t('profile_name_label') }}</label>
-            <input 
-              v-model="draftUsername" 
-              type="text" 
-              maxlength="15" 
-              :placeholder="t('profile_name_label') + '...'"
-              class="settings-card__input"
-            />
-          </div>
-
-          <ColorPicker 
-            :colors="colorPalette" 
-            :active-color="draftColor"
-            :label="t('profile_color_label')"
-            @select="selectColor"
-          />
-
-          <div class="settings-card__stats">
-            <div class="stat-box">
-              <span class="stat-box__label">{{ t('profile_stats_balance') }}</span>
-              <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
+          
+          <!-- Главная страница профиля -->
+          <template v-if="!isAppearanceMode">
+            <div class="settings-card__field">
+              <label class="settings-card__label">{{ t('profile_name_label') }}</label>
+              <input 
+                v-model="draftUsername" 
+                type="text" 
+                maxlength="15" 
+                :placeholder="t('profile_name_label') + '...'"
+                class="settings-card__input"
+              />
             </div>
-            <div class="stat-box">
-              <span class="stat-box__label">{{ t('profile_stats_income') }}</span>
-              <span class="stat-box__value">{{ userStore.totalIncome }} IP / h.</span>
-              <span class="stat-box__sub">{{ t('profile_stats_sectors') }}: {{ userStore.ownedHexCount }}</span>
-            </div>
-          </div>
 
-          <button 
-            class="settings-card__collect-btn" 
-            :disabled="!canCollect" 
-            @click="collectBonus"
-          >
-            {{ canCollect ? t('profile_btn_bonus') : t('profile_btn_bonus_collected') }}
-          </button>
-          <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
-            {{ t('profile_bonus_next') }}: {{ nextCollectDate }}
-          </p>
-
-          <div class="settings-card__rules">
-            <button class="rules-btn-mini" @click="showRules = true">
-              📜 {{ t('rules_btn') }}
+            <button class="settings-btn settings-btn--secondary" @click="isAppearanceMode = true">
+              🎨 {{ t('profile_btn_customize' as any) }}
             </button>
-          </div>
 
-          <div class="settings-card__actions">
-            <button class="settings-btn settings-btn--secondary" @click="handleClose">{{ t('profile_btn_cancel') }}</button>
-            <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
-          </div>
+            <div class="settings-card__stats">
+              <div class="stat-box">
+                <span class="stat-box__label">{{ t('profile_stats_balance') }}</span>
+                <span class="stat-box__value">{{ userStore.profile.balance?.toFixed(1) || 0 }} IP</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-box__label">{{ t('profile_stats_income') }}</span>
+                <span class="stat-box__value">{{ userStore.totalIncome }} IP / h.</span>
+                <span class="stat-box__sub">{{ t('profile_stats_sectors') }}: {{ userStore.ownedHexCount }}</span>
+              </div>
+            </div>
+
+            <button 
+              class="settings-card__collect-btn" 
+              :disabled="!canCollect" 
+              @click="collectBonus"
+            >
+              {{ canCollect ? t('profile_btn_bonus') : t('profile_btn_bonus_collected') }}
+            </button>
+            <p v-if="!canCollect && nextCollectDate" class="settings-card__bonus-info">
+              {{ t('profile_bonus_next') }}: {{ nextCollectDate }}
+            </p>
+
+            <div class="settings-card__rules">
+              <button class="rules-btn-mini" @click="showRules = true">
+                📜 {{ t('rules_btn') }}
+              </button>
+            </div>
+
+            <div class="settings-card__actions">
+              <button class="settings-btn settings-btn--secondary" @click="handleClose">{{ t('profile_btn_cancel') }}</button>
+              <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
+            </div>
+          </template>
+
+          <!-- Страница настройки внешности -->
+          <template v-else>
+            <div class="settings-card__header-mini">
+              <button class="settings-btn settings-btn--secondary" style="flex: 0 0 auto; width: auto; padding: 8px 16px;" @click="isAppearanceMode = false">← {{ t('profile_btn_back' as any) }}</button>
+              <span class="settings-card__subtitle">{{ t('profile_appearance_title' as any) }}</span>
+            </div>
+
+            <ColorPicker 
+              :colors="colorPalette" 
+              :active-color="draftColor"
+              :label="t('profile_color_label')"
+              @select="selectColor"
+            />
+
+            <PatternPicker 
+              v-model="draftPattern" 
+              :label="t('pattern_label' as any) || 'FACTION PATTERN'"
+            />
+            
+            <div class="settings-card__actions">
+               <button class="settings-btn settings-btn--primary" :disabled="!hasChanges" @click="saveChanges">{{ t('profile_btn_save') }}</button>
+            </div>
+          </template>
         </div>
 
         <div v-else-if="activeTab === 'security'" class="settings-card__content anim-slide-up">
@@ -531,6 +565,20 @@ const collectBonus = async () => {
     resize: none;
     &:focus { border-color: $color-primary; outline: none; }
   }
+
+    &__header-mini {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  &__subtitle {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: $color-white;
+    text-transform: uppercase;
+  }
 }
 
 .settings-tabs {
@@ -639,6 +687,8 @@ const collectBonus = async () => {
 .anim-slide-up {
   animation: slideUp 0.3s ease-out;
 }
+
+
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }

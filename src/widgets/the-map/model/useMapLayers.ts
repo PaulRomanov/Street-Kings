@@ -2,6 +2,7 @@ import mapboxgl from 'mapbox-gl';
 import { useHexgrid } from '@/src/shared/lib/useHexgrid';
 import { useZones } from '@/src/entities/zone/model/useZones';
 import { COLORS } from '@/src/shared/config/colors';
+import { createPattern } from '@/src/shared/lib/patternGenerator';
 
 export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson: Ref<any>) => {
   const { getHexBoundary, getVisibleHexIds } = useHexgrid();
@@ -9,8 +10,22 @@ export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson:
   
   const neutralHexGeoJson = ref({ type: 'FeatureCollection', features: [] });
 
+  // Helper to generate patterns on canvas to avoid SVG issues
+  // Implementation moved to @/src/shared/lib/patternGenerator
+
   const initLayers = () => {
     if (!map.value) return;
+    
+    // Generate and add patterns directly
+    const patterns = ['stripes', 'dots', 'grid', 'horizontal', 'diamonds', 'waves', 'dashed'];
+    patterns.forEach(pattern => {
+       if (!map.value!.hasImage(pattern)) {
+           const imageData = createPattern(pattern);
+           if (imageData) {
+             map.value!.addImage(pattern, imageData);
+           }
+       }
+    });
 
     // --- SOURCES ---
     // Текущий сектор игрока
@@ -47,6 +62,18 @@ export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson:
           'fill-color': ['get', 'color'], 
           'fill-opacity': 0.6,
           'fill-outline-color': COLORS.WHITE
+        }
+      });
+    }
+
+    if (!map.value.getLayer('captured-pattern')) {
+      map.value.addLayer({
+        id: 'captured-pattern',
+        type: 'fill',
+        source: 'captured-zones',
+        paint: {
+          'fill-pattern': ['get', 'pattern'], 
+          'fill-opacity': 0.3
         }
       });
     }
@@ -146,3 +173,4 @@ export const useMapLayers = (map: Ref<mapboxgl.Map | null>, initialZonesGeoJson:
 
   return { initLayers, updateNeutralLayer, neutralHexGeoJson };
 };
+

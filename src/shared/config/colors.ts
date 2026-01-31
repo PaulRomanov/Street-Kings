@@ -6,5 +6,14 @@ export const COLORS = {
   ACCENT: '#7000ff',
   ERROR: '#ff4444',
   SUCCESS: '#39ff14',
-  PLAYER_PALETTE: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+  PLAYER_PALETTE: [
+    '#32CD32',
+    '#ADFF2F',
+    '#FFD700',
+    '#FF9900',
+    '#FA8072',
+    '#ef4444',
+    '#8b5cf6',
+    '#3b82f6',
+  ]
 };

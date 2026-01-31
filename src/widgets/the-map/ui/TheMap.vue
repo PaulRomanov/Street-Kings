@@ -63,6 +63,7 @@ const zonesGeoJson = computed(() => ({
       owner: zone.owner_id,
       color: zone.profiles?.color || COLORS.GRAY,
       username: zone.profiles?.username || 'ANONYMOUS',
+      pattern: zone.profiles?.pattern || null,
       storage: calculateLiveStorage(zone.storage || 0, zone.last_income_at, currentTime.value)
     }
   }))

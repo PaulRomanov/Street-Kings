@@ -24,7 +24,8 @@ export const useUserStore = defineStore('user', () => {
         .insert({ 
           id: userId,
           balance: 20, 
-          color: COLORS.PLAYER_PALETTE[0] 
+          color: COLORS.PLAYER_PALETTE[0],
+          pattern: null 
         })
         .select()
         .single()
